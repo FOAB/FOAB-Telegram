@@ -2,7 +2,7 @@
 
 ## System and scope
 
-FOAB is an open-source, self-hosted Telegram group administration bot. One installation and bot token can serve multiple groups. The repository currently includes a strict TypeScript/Node.js bot bootstrap, PostgreSQL installation/group storage, localized onboarding/help, a scoped group settings path, optional HTTPS Web App URL gating, and a signed Telegram Web App init-data verifier. Broader roles, moderation, durable jobs, the HTTP API/session lifecycle, Web App UI, and deployment infrastructure are not yet implemented.
+FOAB is an open-source, self-hosted Telegram group administration bot. One installation and bot token can serve multiple groups. The repository currently includes a strict TypeScript/Node.js bot bootstrap, PostgreSQL installation/group storage, localized onboarding/help, a scoped group settings path, optional HTTPS Web App URL gating, a signed Telegram Web App init-data verifier, and a schema-validated Mini App API with short-lived server-side sessions. Broader roles, moderation, durable jobs, Web App UI, and deployment infrastructure are not yet implemented.
 
 This policy applies to repository code, build and CI workflows, local development, the bot, API, Mini App, database, imported/exported group data, and integrations as they are added. No production environment or public service endpoint has been established by this repository.
 
@@ -12,7 +12,7 @@ Sensitive assets include Telegram bot tokens, database credentials, Mini App aut
 
 Telegram updates and administrator-provided configuration are untrusted input. A Telegram administrator is not automatically a FOAB installation operator or federation owner. Group IDs and user IDs from a browser, command argument, callback, import, or queued job are identifiers, not proof of authority. Group linkage and Telegram community membership do not grant cross-group access or federation consent.
 
-The trust boundaries are Telegram to the bot; Telegram Mini App/browser to the API; each group and federation scope in PostgreSQL; background jobs and external effects; imports/exports and filesystem storage; CI/build dependencies and generated artifacts; and the AI coding workflow to repository instructions. The current repository has signed init-data verification and command handlers, but no HTTP request handlers, session lifecycle, or deployment configuration.
+The trust boundaries are Telegram to the bot; Telegram Mini App/browser to the API; each group and federation scope in PostgreSQL; background jobs and external effects; imports/exports and filesystem storage; CI/build dependencies and generated artifacts; and the AI coding workflow to repository instructions. The current repository has signed init-data verification, a schema-validated API, short-lived in-memory sessions, and command handlers; durable sessions, the browser UI, and deployment configuration remain pending.
 
 ## Security invariants
 
@@ -43,7 +43,7 @@ Only local repository and synthetic test assets are authorized for automated tes
 
 ## Known limitations and compensating controls
 
-The initial application stores installation-scoped group metadata and local integration tests verify separation between synthetic installations. The settings command authorizes only the current administrator of the exact group and does not authorize moderation. The shared init-data verifier has synthetic tests, but session security, rate limits, durable audit, webhook handling, Mini App security headers, backup/restore, and Telegram permission behavior have not yet been runtime-tested.
+The initial application stores installation-scoped group metadata and local integration tests verify separation between synthetic installations. The settings command and Mini App API authorize only the current administrator of the exact group and do not authorize moderation. The shared init-data verifier, session expiry/revocation, origin/CSRF checks, output allowlists, and direct-object denial have synthetic tests, but durable sessions, rate limits, durable audit, webhook handling, backup/restore, and Telegram permission behavior have not yet been runtime-tested.
 
 The repository scanner is a defense-in-depth check, not a guarantee that every secret format is detected. Its tool version is pinned and checksum-validated. It scans the working tree and Git history without provider verification; rotate any confirmed exposed credential and investigate its exposure even after removing it from files or history.
 

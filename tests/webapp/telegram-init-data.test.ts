@@ -9,14 +9,16 @@ describe('Telegram Mini App init data validation', () => {
   it('accepts a valid synthetic signature and returns only the authenticated identity', () => {
     const raw = signedInitData({
       auth_date: String(syntheticNow - 30),
-      allows_write_to_pm: 'true',
+      can_send_after: '30',
+      chat: JSON.stringify({ id: -100_100_000_001, type: 'supergroup', title: 'Synthetic Group' }),
       chat_join_request_query_id: 'synthetic-join-query-001',
       query_id: 'synthetic-query-001',
       signature: 'synthetic-ed25519-signature',
       user: JSON.stringify({
         id: 1_000_000_001,
-        is_bot: false,
+        allows_write_to_pm: true,
         first_name: 'Synthetic',
+        photo_url: 'https://cdn.example.invalid/synthetic.jpg',
         username: 'synthetic_user',
       }),
     });

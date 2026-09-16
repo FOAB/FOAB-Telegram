@@ -29,9 +29,9 @@ Not implemented yet:
 - Broader administrator roles and authorization, plus all moderation or protection actions.
 - Transactional outbox delivery, jobs, audit records, and recovery workflows.
 - Moderation, automatic replies, admission/Guard, federations, or any other group feature.
-- The Mini App interface and HTTP API routes, deployment packaging, and the full three-language interface.
+- The Mini App React/Vite interface, durable multi-instance sessions, deployment packaging, and the full three-language interface.
 
-See the [feature checklist](docs/product/feature-checklist.md) for planned, implemented, and verified capabilities, and [implementation progress](docs/developer/progress.md) for current evidence and the next task. The [BotFather setup checklist](docs/developer/botfather-setup.md) records when owner-side configuration is and is not needed.
+See the [feature checklist](docs/product/feature-checklist.md) for planned, implemented, and verified capabilities, [implementation progress](docs/developer/progress.md) for current evidence and the next task, and the [Mini App API contract](docs/developer/webapp-api.md) for the current HTTP boundary. The [BotFather setup checklist](docs/developer/botfather-setup.md) records when owner-side configuration is and is not needed.
 
 ## Product goals
 
@@ -90,7 +90,7 @@ Current safeguards include:
 - **Strict typing and dependency checks:** strict TypeScript checks the application contracts; the lockfile pins package versions and an age policy delays newly published dependencies. Type checking reduces certain coding mistakes but is not an authorization or security proof.
 - **Least privilege in CI:** repository permissions are read-only for the secret-scan workflow. The actual GitHub workflow result and repository settings such as branch protection must be verified on GitHub; YAML alone does not enforce them.
 
-Application safeguards still to implement and test include server-side authorization for the remaining mutations, feature-specific data access, federation consent, input/output allowlists, rate limits, safe durable job retries, audit redaction, retention/export/deletion rules, and the Mini App HTTP session/API surface. The shared Mini App init-data signature verifier is implemented, but it does not by itself authorize a group action. The current settings path authorizes only the exact current group administrator and does not authorize moderation. Synthetic fixtures and local checks never authorize testing against third-party bots, groups, or production accounts.
+Application safeguards still to implement and test include server-side authorization for the remaining mutations, feature-specific data access, federation consent, rate limits, safe durable job retries, audit redaction, retention/export/deletion rules, durable Mini App sessions, and browser/deployment checks. The shared Mini App init-data signature verifier and the initial schema-validated settings API are implemented, but neither a signed identity nor a session by itself authorizes a group action. The current settings paths authorize only the exact current group administrator and do not authorize moderation. Synthetic fixtures and local checks never authorize testing against third-party bots, groups, or production accounts.
 
 ## Technology
 
@@ -101,7 +101,7 @@ Application safeguards still to implement and test include server-side authoriza
 | Package manager | In use | pnpm 11.22.0 with a committed lockfile |
 | Tests | In use | Vitest 5 with synthetic fixtures; no real Telegram calls |
 | Database | Local schema and group registry in use | PostgreSQL 18 with Drizzle and reviewed SQL migrations |
-| HTTP API | Foundation in progress | Fastify with schema-validated contracts; routes and sessions remain |
+| HTTP API | Foundation in progress | Fastify with schema-validated session, group-list, and settings contracts; durable sessions and rate limits remain |
 | Administration UI | Foundation in progress | React, Vite, and TypeScript Telegram Mini App; UI remains to be built |
 | Durable background work | Planned | PostgreSQL-backed inbox, outbox, and scheduled jobs; Redis/Valkey is not required initially |
 
@@ -135,7 +135,7 @@ Start the bot after the local databases are migrated:
 pnpm dev
 ```
 
-On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing the group's language or time zone. In private chats, a configured `FOAB_WEB_APP_URL` is offered as the primary settings entry point and inline buttons remain available as the fallback. Groups use only requester-targeted ephemeral command responses and inline callback buttons. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
+On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing the group's language or time zone. When `FOAB_WEB_APP_URL` is configured, FOAB also starts its HTTPS-origin-bound API listener using `FOAB_WEB_APP_HOST` and `FOAB_WEB_APP_PORT`; the private settings entry point offers the Mini App and inline buttons remain available as the fallback. Groups use only requester-targeted ephemeral command responses and inline callback buttons. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
 
 ## Checks
 

@@ -211,7 +211,7 @@ export function parseSettingsArguments(input: string): SettingsCommand {
 }
 
 /** Parses only the locales that FOAB exposes to users. */
-function parseSupportedLocale(value: string): SupportedLocale | null {
+export function parseSupportedLocale(value: string): SupportedLocale | null {
   switch (value) {
     case 'en-US':
     case 'pt-BR':
@@ -223,7 +223,7 @@ function parseSupportedLocale(value: string): SupportedLocale | null {
 }
 
 /** Validates a bounded IANA time-zone name using the host's ICU time-zone data. */
-function isSupportedTimeZone(value: string): boolean {
+export function isSupportedTimeZone(value: string): boolean {
   if (value.length === 0 || value.length > 64 || !isSafeTimeZoneCharacters(value)) {
     return false;
   }

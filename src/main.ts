@@ -3,6 +3,7 @@ import { createDatabase } from './db/database.js';
 import { ensureCurrentInstallation } from './db/installation-repository.js';
 import { GroupRepository } from './db/group-repository.js';
 import { UpdateInboxRepository } from './db/update-inbox-repository.js';
+import { createWebAppServer } from './webapp/api.js';
 import {
   groupAdministratorCommandMenu,
   groupCommandMenu,
@@ -47,9 +48,10 @@ async function main(): Promise<void> {
   try {
     await database.pool.query('SELECT 1');
     const installationId = await ensureCurrentInstallation(database.db);
+    const groups = new GroupRepository(database.db);
     const bot = createBot(config.telegramBotToken, {
       installationId,
-      groups: new GroupRepository(database.db),
+      groups,
       inbox: new UpdateInboxRepository(database.db),
       ...(config.webAppUrl === null ? {} : { webAppUrl: config.webAppUrl }),
     });
@@ -85,12 +87,32 @@ async function main(): Promise<void> {
       });
     }
 
-    await bot.start({
-      allowed_updates: ['message', 'my_chat_member', 'callback_query'],
-      onStart: (botInfo) => {
-        writeLog('info', 'telegram_bot_started', { botId: botInfo.id });
-      },
-    });
+    const webAppServer = config.webAppUrl === null
+      ? null
+      : createWebAppServer({
+        botToken: config.telegramBotToken,
+        groups,
+        installationId,
+        telegram: bot.api,
+        webAppUrl: config.webAppUrl,
+      });
+    if (webAppServer) {
+      await webAppServer.listen({ host: config.webAppHost, port: config.webAppPort });
+      writeLog('info', 'web_app_api_started');
+    }
+
+    try {
+      await bot.start({
+        allowed_updates: ['message', 'my_chat_member', 'callback_query'],
+        onStart: (botInfo) => {
+          writeLog('info', 'telegram_bot_started', { botId: botInfo.id });
+        },
+      });
+    } finally {
+      if (webAppServer) {
+        await webAppServer.close();
+      }
+    }
   } finally {
     await database.pool.end();
   }

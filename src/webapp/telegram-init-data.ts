@@ -5,8 +5,9 @@ const MAX_QUERY_ID_LENGTH = 256;
 const MAX_LANGUAGE_CODE_LENGTH = 64;
 const MAX_CLOCK_SKEW_SECONDS = 60;
 const ALLOWED_FIELDS = new Set([
-  'allows_write_to_pm',
   'auth_date',
+  'can_send_after',
+  'chat',
   'chat_instance',
   'chat_join_request_query_id',
   'chat_type',
@@ -142,7 +143,7 @@ function parseWebAppUser(rawUser: string): ValidatedWebAppUser | null {
     typeof id !== 'number' ||
     !Number.isSafeInteger(id) ||
     id <= 0 ||
-    typeof isBot !== 'boolean' ||
+    (isBot !== undefined && typeof isBot !== 'boolean') ||
     (languageCode !== undefined &&
       (typeof languageCode !== 'string' || languageCode.length > MAX_LANGUAGE_CODE_LENGTH))
   ) {
@@ -151,7 +152,7 @@ function parseWebAppUser(rawUser: string): ValidatedWebAppUser | null {
 
   return {
     id,
-    isBot,
+    isBot: isBot ?? false,
     languageCode: languageCode ?? null,
   };
 }

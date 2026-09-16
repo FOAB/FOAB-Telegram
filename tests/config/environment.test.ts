@@ -17,6 +17,8 @@ describe('runtime environment validation', () => {
 
     expect(config.telegramBotToken).toBe('synthetic-token-value');
     expect(config.databaseUrl).toContain('/synthetic_db');
+    expect(config.webAppHost).toBe('127.0.0.1');
+    expect(config.webAppPort).toBe(3000);
     expect(config.webAppUrl).toBeNull();
     expect(Object.isFrozen(config)).toBe(true);
   });
@@ -26,10 +28,33 @@ describe('runtime environment validation', () => {
       [runtimeEnvironmentKeys.telegramBotToken]: 'synthetic-token-value',
       [runtimeEnvironmentKeys.databaseUrl]:
         'postgresql://synthetic_user:synthetic_password@127.0.0.1:5432/synthetic_db',
+      [runtimeEnvironmentKeys.webAppHost]: '127.0.0.1',
+      [runtimeEnvironmentKeys.webAppPort]: '4444',
       [runtimeEnvironmentKeys.webAppUrl]: 'https://miniapp.example.invalid/foab',
     });
 
+    expect(config.webAppHost).toBe('127.0.0.1');
+    expect(config.webAppPort).toBe(4444);
     expect(config.webAppUrl).toBe('https://miniapp.example.invalid/foab');
+  });
+
+  it.each([
+    [runtimeEnvironmentKeys.webAppHost, 'https://miniapp.example.invalid'],
+    [runtimeEnvironmentKeys.webAppHost, 'host with spaces'],
+    [runtimeEnvironmentKeys.webAppPort, '0'],
+    [runtimeEnvironmentKeys.webAppPort, '65536'],
+    [runtimeEnvironmentKeys.webAppPort, 'port'],
+  ])('rejects an invalid optional Web App listener value', (key, value) => {
+    const error = captureConfigurationError(() =>
+      loadRuntimeConfig({
+        [runtimeEnvironmentKeys.telegramBotToken]: 'synthetic-token-value',
+        [runtimeEnvironmentKeys.databaseUrl]:
+          'postgresql://synthetic_user:synthetic_password@127.0.0.1:5432/synthetic_db',
+        [key]: value,
+      }),
+    );
+
+    expect(error.variableNames).toContain(key);
   });
 
   it.each([undefined, '', '   ', ' token-with-padding '])(

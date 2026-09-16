@@ -9,7 +9,7 @@
 - **T-03 — Typed Telegram update boundary and inbox:** implemented and locally verified. Supported `message` and `my_chat_member` updates are projected into bounded internal shapes, unknown top-level variants are rejected, and an installation-scoped lease prevents concurrent duplicate processing without storing raw update content. A transactional outbox is still pending.
 - **F-001 — Onboarding and help:** in progress. Private/group `/start`, `/help`, `/ping`, `/id`, `/settings`, and `/cancel`, group registration, requester-only group feedback, localized command descriptions, current exact-group administrator checks, optimistic group settings writes, and private group selection exist. Live Telegram checks and broader help flows remain.
 - **F-015 — Read-only identity diagnostics:** in progress. `/ping` reports process reachability through the bot handler, while `/id` reports only the authenticated sender's current chat and user IDs from the current update. Staff, user, bot, and richer chat information remain.
-- **F-060 — Administration Mini App:** in progress. The optional HTTPS URL boundary, private-only launch button, and signed `initData` verifier exist; the schema-validated HTTP API, session lifecycle, React/Vite UI, and write routes remain. Inline callback keyboards are the fallback.
+- **F-060 — Administration Mini App:** in progress. The optional HTTPS URL boundary, private-only launch button, signed `initData` verifier, schema-validated HTTP API, short-lived server-side session lifecycle, origin/CSRF controls, allowlisted group responses, administrator-filtered group listing, and optimistic settings write route exist. The React/Vite UI, durable multi-instance sessions, rate limits, and deployment remain. Inline callback keyboards are the fallback.
 - **F-065 — Ephemeral command feedback:** in progress. The group command registry opts `/start`, `/help`, `/ping`, `/id`, `/settings`, and `/cancel` into ephemeral delivery; response payloads target the authenticated sender and reply to the incoming ephemeral message. Private-chat responses use ordinary messages. Telegram eligibility and client delivery remain unverified; failed private delivery never falls back to a public group response.
 - **F-002 — Group selection and private administration:** in progress. A private `/settings` flow lists only active groups where the current user's administrator status can be confirmed, binds a short-lived numeric selection to that private user and installation, and rechecks the selected group before every settings write. Pagination, administrator reload, and the broader private administration surface remain.
 
@@ -21,8 +21,8 @@
 - `pnpm db:migrate` — passed against `foab_dev`.
 - `pnpm db:migrate:test` — passed against the separate `foab_test` database.
 - `pnpm test:integration` — passed; eight PostgreSQL integration tests cover concurrent installation initialization, identical chat IDs in separate installations, stale group updates after bot removal, runtime role privileges, optimistic settings revisions, cross-installation settings denial, and concurrent/failed inbox claims.
-- `pnpm check` — passed; strict typecheck and 47 unit tests, including callback normalization, signed Web App `initData`, private selection, authorization, environment-file separation, keyboard contracts, and group ephemeral command payloads.
-- `pnpm build` — passed after the ephemeral group command changes.
+- `pnpm check` — passed; strict typecheck and 55 unit tests, including callback normalization, signed Web App `initData`, session expiry/revocation, origin/CSRF handling, allowlisted API output, cross-group denial, private selection, authorization, environment-file separation, keyboard contracts, and group ephemeral command payloads.
+- `pnpm build` — passed after the Mini App API and session changes.
 - The settings slice added `pnpm db:generate`, `pnpm db:migrate`, and `pnpm db:migrate:test` coverage for the settings revision column; integration tests now cover stale and cross-installation settings writes.
 - `pnpm install --frozen-lockfile` and `pnpm audit` — passed; no known dependency vulnerabilities remain after pinning the affected transitive `esbuild` dependency to a patched release.
 - `pwsh -NoProfile -File scripts/security/Invoke-SecurityChecks.ps1 -SelfTest` — passed synthetic positive/negative checks, Git-visible working-tree scanning, and full available Git-history scanning.
@@ -35,12 +35,12 @@
 - Group records are keyed and queried by server-owned installation UUID plus Telegram chat ID. The database stores group metadata, bot membership state, and versioned language/time-zone settings only; message bodies and member names are not persisted.
 - Private group selection stores only short-lived server-owned group IDs bound to the installation, private chat, and user. It does not accept a client-supplied chat ID as proof of authority.
 - The inbox stores only normalized update metadata and a short processing lease. It can retry a failed handler, but it does not make external sends transactional; that guarantee belongs to the pending outbox.
-- Group registration does not establish administrator authority. The settings command separately checks the current Telegram administrator status for the exact update chat; moderation, broader roles, durable jobs, audit, and recovery remain unimplemented.
+- Group registration does not establish administrator authority. The settings command and Mini App API separately check the current Telegram administrator status for the exact target group; moderation, broader roles, durable jobs, audit, and recovery remain unimplemented.
 - Every multi-group feature must preserve the contracts in [authorization and data handling](../security/authorization-and-data-contracts.md).
 - Source identifiers, comments, TSDoc, tests, and technical documentation remain in English. User-facing messages belong in the en-US, pt-BR, and es-ES catalogs.
 
 ## Next dependency-ready work
 
-1. Build the schema-validated Mini App HTTP API, session lifecycle, and React/Vite settings UI on the shared authorization contract.
+1. Build the React/Vite settings UI on the schema-validated Mini App API, then replace in-memory sessions with durable server-side storage before multi-instance deployment.
 2. Finish F-001/F-002 with live Telegram validation, bounded pagination, administrator reload, and contextual help.
 3. Add a transactional outbox and durable job claims before implementing moderation or other external group mutations.

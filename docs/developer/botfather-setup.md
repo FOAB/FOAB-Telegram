@@ -51,7 +51,7 @@ The relevant Telegram methods and scopes are documented in [`setMyCommands`](htt
 
 ## Mini App setup and origin protection
 
-The repository now has the signed `initData` verification boundary and optional URL gating. When the React/Vite Mini App HTTP API and UI are implemented and deployed:
+The repository now has the signed `initData` verification boundary, optional URL gating, and the first schema-validated Mini App API. When the React/Vite Mini App UI is implemented and deployed:
 
 1. Use an HTTPS deployment with a stable, reviewed origin.
 2. Configure the BotFather Menu Button to that URL. Configure Main App/profile launch only if the project wants that additional entry point.

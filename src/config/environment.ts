@@ -2,6 +2,8 @@
 export const runtimeEnvironmentKeys = {
   telegramBotToken: 'FOAB_TELEGRAM_BOT_TOKEN',
   databaseUrl: 'FOAB_DATABASE_URL',
+  webAppHost: 'FOAB_WEB_APP_HOST',
+  webAppPort: 'FOAB_WEB_APP_PORT',
   webAppUrl: 'FOAB_WEB_APP_URL',
 } as const;
 
@@ -9,6 +11,8 @@ export const runtimeEnvironmentKeys = {
 export interface RuntimeConfig {
   readonly telegramBotToken: string;
   readonly databaseUrl: string;
+  readonly webAppHost: string;
+  readonly webAppPort: number;
   readonly webAppUrl: string | null;
 }
 
@@ -38,9 +42,13 @@ export function loadRuntimeConfig(
 ): RuntimeConfig {
   const tokenKey = runtimeEnvironmentKeys.telegramBotToken;
   const databaseUrlKey = runtimeEnvironmentKeys.databaseUrl;
+  const webAppHostKey = runtimeEnvironmentKeys.webAppHost;
+  const webAppPortKey = runtimeEnvironmentKeys.webAppPort;
   const webAppUrlKey = runtimeEnvironmentKeys.webAppUrl;
   const token = environment[tokenKey];
   const databaseUrl = environment[databaseUrlKey];
+  const webAppHost = environment[webAppHostKey] ?? '127.0.0.1';
+  const webAppPort = environment[webAppPortKey] ?? '3000';
   const webAppUrl = environment[webAppUrlKey];
   const invalidVariables: string[] = [];
 
@@ -52,6 +60,14 @@ export function loadRuntimeConfig(
     invalidVariables.push(databaseUrlKey);
   }
 
+  if (!isValidWebAppHost(webAppHost)) {
+    invalidVariables.push(webAppHostKey);
+  }
+
+  if (!isValidWebAppPort(webAppPort)) {
+    invalidVariables.push(webAppPortKey);
+  }
+
   if (webAppUrl !== undefined && !isValidWebAppUrl(webAppUrl)) {
     invalidVariables.push(webAppUrlKey);
   }
@@ -60,7 +76,13 @@ export function loadRuntimeConfig(
     throw new ConfigurationError(invalidVariables);
   }
 
-  return Object.freeze({ telegramBotToken: token, databaseUrl, webAppUrl: webAppUrl ?? null });
+  return Object.freeze({
+    telegramBotToken: token,
+    databaseUrl,
+    webAppHost,
+    webAppPort: Number(webAppPort),
+    webAppUrl: webAppUrl ?? null,
+  });
 }
 
 /** Validates URL shape without retaining or exposing any credential component. */
@@ -101,4 +123,18 @@ function isValidWebAppUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Validates a bind host without allowing a URL or shell-like delimiter. */
+function isValidWebAppHost(value: string): boolean {
+  return value.length > 0 && value.length <= 253 && /^[A-Za-z0-9.:[\]_-]+$/u.test(value);
+}
+
+/** Validates a TCP port using decimal syntax and the non-reserved range. */
+function isValidWebAppPort(value: string): boolean {
+  if (!/^[0-9]{1,5}$/u.test(value)) {
+    return false;
+  }
+  const port = Number(value);
+  return Number.isInteger(port) && port >= 1_024 && port <= 65_535;
 }

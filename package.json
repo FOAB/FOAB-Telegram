@@ -22,7 +22,9 @@
     "security:secrets": "pwsh -NoProfile -File scripts/security/Invoke-SecurityChecks.ps1 -SelfTest"
   },
   "dependencies": {
+    "@fastify/cookie": "11.1.1",
     "drizzle-orm": "0.45.2",
+    "fastify": "5.12.4",
     "grammy": "1.46.0",
     "pg": "8.23.0"
   },
