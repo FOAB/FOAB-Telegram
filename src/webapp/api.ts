@@ -1,9 +1,12 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import fastify, {
   type FastifyInstance,
   type FastifyReply,
   type FastifyRequest,
 } from 'fastify';
 import cookie from '@fastify/cookie';
+import fastifyStatic from '@fastify/static';
 import type {
   GroupRecord,
   GroupSettingsUpdate,
@@ -74,6 +77,7 @@ export function createWebAppServer(
   dependencies: WebAppServerDependencies,
 ): FastifyInstance {
   const origin = getHttpsOrigin(dependencies.webAppUrl);
+  const webAppPath = getWebAppPath(dependencies.webAppUrl);
   const sessions = dependencies.sessions ?? new WebAppSessionStore();
   const clock = dependencies.clock ?? (() => new Date());
   const app = fastify({
@@ -83,6 +87,7 @@ export function createWebAppServer(
   });
 
   void app.register(cookie);
+  registerBuiltWebApp(app, webAppPath);
   app.addHook('onSend', async (_request, reply) => {
     reply.header('Cache-Control', 'no-store');
     reply.header('Content-Security-Policy', contentSecurityPolicy());
@@ -229,6 +234,19 @@ export function createWebAppServer(
   });
 
   return app;
+}
+
+/** Serves the built Mini App when the repository's production bundle exists. */
+function registerBuiltWebApp(app: FastifyInstance, webAppPath: string): void {
+  const webAppRoot = fileURLToPath(new URL('../../webapp/dist/', import.meta.url));
+  if (!existsSync(webAppRoot)) {
+    return;
+  }
+  void app.register(fastifyStatic, {
+    index: 'index.html',
+    prefix: webAppPath,
+    root: webAppRoot,
+  });
 }
 
 /** Produces a response that cannot reveal implementation or input details. */
@@ -434,6 +452,13 @@ function getHttpsOrigin(webAppUrl: string): string {
     throw new Error('The Mini App URL must be an HTTPS URL without credentials or a fragment.');
   }
   return parsed.origin;
+}
+
+/** Converts a configured Mini App path into a safe static mount prefix. */
+function getWebAppPath(webAppUrl: string): string {
+  const parsed = new URL(webAppUrl);
+  const path = parsed.pathname.replace(/\/+$/u, '');
+  return path.length === 0 ? '/' : path;
 }
 
 /** Limits browser capabilities and permits only the Telegram Web App bridge script. */

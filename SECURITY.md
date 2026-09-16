@@ -2,7 +2,7 @@
 
 ## System and scope
 
-FOAB is an open-source, self-hosted Telegram group administration bot. One installation and bot token can serve multiple groups. The repository currently includes a strict TypeScript/Node.js bot bootstrap, PostgreSQL installation/group storage, localized onboarding/help, a scoped group settings path, optional HTTPS Web App URL gating, a signed Telegram Web App init-data verifier, and a schema-validated Mini App API with short-lived server-side sessions. Broader roles, moderation, durable jobs, Web App UI, and deployment infrastructure are not yet implemented.
+FOAB is an open-source, self-hosted Telegram group administration bot. One installation and bot token can serve multiple groups. The repository currently includes a strict TypeScript/Node.js bot bootstrap, PostgreSQL installation/group storage, localized onboarding/help, a scoped group settings path, optional HTTPS Web App URL gating, a signed Telegram Web App init-data verifier, a schema-validated Mini App API with short-lived server-side sessions, and an initial React/Vite settings UI. Broader roles, moderation, durable jobs, the remaining administration UI, and deployment infrastructure are not yet implemented.
 
 This policy applies to repository code, build and CI workflows, local development, the bot, API, Mini App, database, imported/exported group data, and integrations as they are added. No production environment or public service endpoint has been established by this repository.
 
@@ -12,7 +12,7 @@ Sensitive assets include Telegram bot tokens, database credentials, Mini App aut
 
 Telegram updates and administrator-provided configuration are untrusted input. A Telegram administrator is not automatically a FOAB installation operator or federation owner. Group IDs and user IDs from a browser, command argument, callback, import, or queued job are identifiers, not proof of authority. Group linkage and Telegram community membership do not grant cross-group access or federation consent.
 
-The trust boundaries are Telegram to the bot; Telegram Mini App/browser to the API; each group and federation scope in PostgreSQL; background jobs and external effects; imports/exports and filesystem storage; CI/build dependencies and generated artifacts; and the AI coding workflow to repository instructions. The current repository has signed init-data verification, a schema-validated API, short-lived in-memory sessions, and command handlers; durable sessions, the browser UI, and deployment configuration remain pending.
+The trust boundaries are Telegram to the bot; Telegram Mini App/browser to the API; each group and federation scope in PostgreSQL; background jobs and external effects; imports/exports and filesystem storage; CI/build dependencies and generated artifacts; and the AI coding workflow to repository instructions. The current repository has signed init-data verification, a schema-validated API, short-lived in-memory sessions, command handlers, and an initial browser UI; durable sessions, the remaining UI surface, and deployment configuration remain pending.
 
 ## Security invariants
 

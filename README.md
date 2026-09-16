@@ -29,7 +29,7 @@ Not implemented yet:
 - Broader administrator roles and authorization, plus all moderation or protection actions.
 - Transactional outbox delivery, jobs, audit records, and recovery workflows.
 - Moderation, automatic replies, admission/Guard, federations, or any other group feature.
-- The Mini App React/Vite interface, durable multi-instance sessions, deployment packaging, and the full three-language interface.
+- The remaining Mini App administration surface, durable multi-instance sessions, deployment packaging, and the full three-language interface across future capabilities.
 
 See the [feature checklist](docs/product/feature-checklist.md) for planned, implemented, and verified capabilities, [implementation progress](docs/developer/progress.md) for current evidence and the next task, and the [Mini App API contract](docs/developer/webapp-api.md) for the current HTTP boundary. The [BotFather setup checklist](docs/developer/botfather-setup.md) records when owner-side configuration is and is not needed.
 
@@ -102,7 +102,7 @@ Application safeguards still to implement and test include server-side authoriza
 | Tests | In use | Vitest 5 with synthetic fixtures; no real Telegram calls |
 | Database | Local schema and group registry in use | PostgreSQL 18 with Drizzle and reviewed SQL migrations |
 | HTTP API | Foundation in progress | Fastify with schema-validated session, group-list, and settings contracts; durable sessions and rate limits remain |
-| Administration UI | Foundation in progress | React, Vite, and TypeScript Telegram Mini App; UI remains to be built |
+| Administration UI | Foundation in progress | React, Vite, and TypeScript Mini App with the initial group/settings editor; broader administration remains |
 | Durable background work | Planned | PostgreSQL-backed inbox, outbox, and scheduled jobs; Redis/Valkey is not required initially |
 
 The current database slice stores installation identity, group metadata, versioned group language/time-zone settings, and metadata-only update receipts. It does not store message bodies or perform moderation. The settings command checks current authority for the exact group before writing. The inbox lease prevents duplicate update handling; a transactional outbox is still required before durable external effects. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
@@ -135,7 +135,7 @@ Start the bot after the local databases are migrated:
 pnpm dev
 ```
 
-On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing the group's language or time zone. When `FOAB_WEB_APP_URL` is configured, FOAB also starts its HTTPS-origin-bound API listener using `FOAB_WEB_APP_HOST` and `FOAB_WEB_APP_PORT`; the private settings entry point offers the Mini App and inline buttons remain available as the fallback. Groups use only requester-targeted ephemeral command responses and inline callback buttons. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
+On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing the group's language or time zone. When `FOAB_WEB_APP_URL` is configured, FOAB also starts its HTTPS-origin-bound API listener using `FOAB_WEB_APP_HOST` and `FOAB_WEB_APP_PORT`, serving the built Mini App at the configured URL path; the private settings entry point offers the Mini App and inline buttons remain available as the fallback. Groups use only requester-targeted ephemeral command responses and inline callback buttons. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
 
 ## Checks
 

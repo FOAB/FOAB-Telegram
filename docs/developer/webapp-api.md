@@ -1,6 +1,6 @@
 # Mini App API Contract
 
-This document describes the first HTTP contract for the FOAB administration Mini App. The API is served by the same application process as the bot when `FOAB_WEB_APP_URL` is configured. It currently supports the private administration settings slice; moderation, federation, and other group capabilities are not exposed here.
+This document describes the first HTTP contract for the FOAB administration Mini App. The API and the built Vite bundle are served by the same application process as the bot when `FOAB_WEB_APP_URL` is configured. The bundle is mounted at the URL path, while API requests use `/api`. It currently supports the private administration settings slice; moderation, federation, and other group capabilities are not exposed here.
 
 ## Transport and browser boundary
 
