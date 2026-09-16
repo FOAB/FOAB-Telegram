@@ -14,15 +14,15 @@ Leave the checkbox empty until the capability meets its acceptance contract. Set
 ## Foundation already in place
 
 - [x] **T-00 — Telegram API/SDK compatibility baseline.** Compile-time contracts and synthetic fixtures cover selected API shapes. Live delivery, client rendering, and permissions are not proven by this work.
-- [x] **T-01 — TypeScript runtime bootstrap.** Strict TypeScript, typed environment validation, grammY long polling, secret-safe structured logs, and a non-mutating `/start` response.
+- [x] **T-01 — TypeScript runtime bootstrap.** Strict TypeScript, typed token/database validation, grammY long polling, safe structured logs, database-pool cleanup, and `/start`/`/help` handlers. Live Telegram behavior is not yet verified.
 - [x] **Repository security baseline.** Ignored local secrets/data, a pinned secret scanner with synthetic checks, dependency checks, and GitHub workflow definitions. Hosted workflow execution and repository protection settings still need GitHub evidence.
-- [ ] **T-02 — PostgreSQL and durable identity/group storage.** Not started; no FOAB schema or database role exists.
+- [x] **T-02 — PostgreSQL and durable identity/group storage.** Initial Drizzle migration, one installation identity per database, installation-scoped group records, local role separation, and synthetic multi-installation integration tests. **Status: Implemented and verified on local PostgreSQL 18; live Telegram registration remains unverified.**
 
-The product capabilities below remain unfinished unless their own status says otherwise. In particular, `/start` is only part of F-001; no group feature is complete yet.
+The product capabilities below remain unfinished unless their own status says otherwise. F-001 is still in progress: initial onboarding and help exist, but settings, cancellation, authorization, and live Telegram checks are outstanding.
 
 ## Platform and group access
 
-- [ ] **F-001 · P0 — Onboarding, help, and settings.** `/start`, `/help`, `/settings`, and `/cancel`; contextual help; private start guidance; cancellation affects only the active flow. **Status: In progress** — only the basic `/start` response exists.
+- [ ] **F-001 · P0 — Onboarding, help, and settings.** `/start`, `/help`, `/settings`, and `/cancel`; contextual help; private start guidance; cancellation affects only the active flow. **Status: In progress** — private/group `/start` and `/help`, group registry, initial locale fallback, and command-menu publication exist; settings, cancellation, broader help, and live Telegram verification remain.
 - [ ] **F-002 · P0 — Group selection and private administration.** List only known groups, search/page results, bind a private conversation to an explicit group, and reload known administrators; revalidate the actor's current group authority.
 - [ ] **F-003 · P0 — Language, time zone, and local formats.** Independent personal and per-group language, IANA time zones, localized formatting, and localized help. **Locales:** en-US, pt-BR, es-ES.
 - [ ] **F-015 · P2 — Staff, user, chat, and bot information.** Provide `/staff`, `/id`, `/info`, `/me`, and `/ping` from observed/known data; distinguish unknown data from nonexistence and never treat an old username as current identity.
@@ -110,7 +110,7 @@ The product capabilities below remain unfinished unless their own status says ot
 
 - [ ] **F-060 · P1 — Administration Mini App.** Use the same API and authorization as commands; provide drafts, diff, save, and conflict handling.
 - [ ] **F-061 · P2 — Policy simulation and observe mode.** Simulate without Telegram side effects and explain the result against a versioned policy.
-- [ ] **F-065 · P1 — Ephemeral command feedback.** Show private-to-requester responses where the current Telegram method and client support it; retain an appropriate fallback and never mistake ephemeral feedback for group-wide enforcement.
+- [ ] **F-065 · P1 — Ephemeral command feedback.** Show private-to-requester responses where the current Telegram method and client support it; retain an appropriate fallback and never mistake ephemeral feedback for group-wide enforcement. **Status: In progress** — `/start` and `/help` are registered as ephemeral in group command menus and reply to the requesting user; delivery eligibility and supported clients remain unverified, and fail-closed behavior does not publish a public fallback.
 - [ ] **F-066 · P3 — Structured rich messages.** Render supported structured content with a readable text fallback that preserves its meaning.
 - [ ] **F-067 · P3 — Guest mode and bot-to-bot integration.** Read/automation access requires explicit allowlists, capability limits, rate/loop controls, and audit; no authority is inherited implicitly.
 - [ ] **F-070 · P3 — Optional newer Telegram capabilities.** Evaluate checklists, member tags, communities, channel direct messages, stories, and similar API additions behind capability checks; each addition must extend an existing owner unless a distinct lifecycle is justified.
@@ -123,4 +123,4 @@ The product capabilities below remain unfinished unless their own status says ot
 
 ## Current counts
 
-At this checkpoint, **T-00, T-01, and the repository security foundation are in place; F-001 is partial; no full group-management capability is verified; T-02 and every other F-item remain incomplete.** Update this statement and the individual status as evidence changes. Do not mark a capability verified until its behavior, authorization boundaries, multi-group isolation, failure modes, localization, and required external checks have evidence.
+At this checkpoint, **T-00, T-01, T-02, and the repository security foundation are implemented; T-02 is verified against local PostgreSQL; F-001 is partial; and no full moderation or protection capability is implemented.** Update this statement and individual statuses as evidence changes. Do not mark a product capability verified until its behavior, authorization boundaries, multi-group isolation, failure modes, localization, and required external checks have evidence.

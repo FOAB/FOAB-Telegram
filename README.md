@@ -6,18 +6,25 @@ This repository documents the intended product and its current implementation se
 
 ## Project status
 
-The current runnable bot uses strict TypeScript, Node.js 24, and grammY. It validates a Telegram bot token, starts long polling, and replies to `/start` with a short development-status message. It does not yet connect to PostgreSQL or administer groups.
+The current runnable bot uses strict TypeScript, Node.js 24, grammY, and PostgreSQL. It validates its token and database URL, loads a database-owned installation identity, publishes the initial `/start` and `/help` command menu, and starts long polling. It records group metadata and the bot's membership state. Private chats receive ordinary responses; group commands are registered as ephemeral and their responses target only the requesting member.
 
 Implemented foundation:
 
-- Typed runtime configuration and a minimal grammY bootstrap.
+- Typed runtime configuration, safe structured logs, graceful database-pool cleanup, and a grammY long-polling process.
+- PostgreSQL schema and reviewed Drizzle migration for installation identity and group metadata, with every group key/query scoped by installation.
+- Separate database migration and runtime roles; the runtime role has data access but no schema or cluster-administration privileges.
+- Automatic group registration from Telegram bot-membership updates and onboarding commands; removing the bot marks that group inactive.
+- Ephemeral group `/start` and `/help` commands and requester-only ephemeral responses; Telegram delivery and client support are not yet live-tested.
+- Initial en-US, pt-BR, and es-ES start/help messages, with the group locale defaulting to en-US.
+- A repeatable local PostgreSQL provisioner and synthetic integration tests for concurrent startup and cross-installation isolation.
 - Strict TypeScript compiler settings and synthetic unit tests.
 - A dated Telegram Bot API and SDK compatibility record with compile-time contracts and synthetic fixtures.
 - A security policy, secret-safe logging rules, ignored local credentials/data, and a pinned local secret scanner.
 
 Not implemented yet:
 
-- PostgreSQL storage, migrations, group onboarding, permissions, and durable jobs.
+- Administrator authorization, settings, and all moderation or protection actions.
+- Durable update processing, jobs, audit records, and recovery workflows.
 - Moderation, automatic replies, admission/Guard, federations, or any other group feature.
 - The HTTP API, Mini App, deployment packaging, and the three-language interface.
 
@@ -58,7 +65,7 @@ The following describes the product roadmap, not shipped commands. The [feature 
 
 ### Telegram API capabilities
 
-The project tracks newer Telegram Bot API features as delivery or interaction capabilities that existing FOAB features may use—not as duplicate product modules. Planned examples include ephemeral feedback for the person who ran a command, Guard admission queries, structured Rich Messages with a useful text fallback, disabled buttons, and selected community/reaction/poll flows.
+The project treats newer Telegram Bot API features as delivery or interaction capabilities that existing FOAB features may use—not as duplicate product modules. Initial ephemeral `/start` and `/help` handling is implemented for group chats. Delivery is not guaranteed and supported-client behavior still needs verification. Other planned examples include Guard admission queries, structured Rich Messages with a useful text fallback, disabled buttons, and selected community/reaction/poll flows.
 
 The compatibility record was checked against Bot API 10.3 and grammY 1.46.0 on September 16, 2026. Compile-time type contracts and synthetic fixtures confirm that the selected SDK exposes the documented API shapes; they do **not** prove real Telegram delivery, client rendering, permissions, or end-to-end behavior. See [Telegram compatibility and open verification gates](docs/compatibility/telegram-api.md).
 
@@ -80,7 +87,7 @@ Current safeguards include:
 - **Strict typing and dependency checks:** strict TypeScript checks the application contracts; the lockfile pins package versions and an age policy delays newly published dependencies. Type checking reduces certain coding mistakes but is not an authorization or security proof.
 - **Least privilege in CI:** repository permissions are read-only for the secret-scan workflow. The actual GitHub workflow result and repository settings such as branch protection must be verified on GitHub; YAML alone does not enforce them.
 
-Application safeguards still to implement and test include server-side authorization on every mutation, installation-and-chat-scoped database access, federation consent, input/output allowlists, rate limits, safe durable job retries, audit redaction, retention/export/deletion rules, and Mini App authentication. **Do not treat these planned controls as protections the current `/start` skeleton already provides.** Synthetic fixtures and local checks never authorize testing against third-party bots, groups, or production accounts.
+Application safeguards still to implement and test include server-side authorization on every mutation, feature-specific data access, federation consent, input/output allowlists, rate limits, safe durable job retries, audit redaction, retention/export/deletion rules, and Mini App authentication. The current group registry is scoped, but onboarding does not authorize moderation. Synthetic fixtures and local checks never authorize testing against third-party bots, groups, or production accounts.
 
 ## Technology
 
@@ -90,16 +97,16 @@ Application safeguards still to implement and test include server-side authoriza
 | Telegram bot | Minimal bootstrap in use | grammY 1.46.0 |
 | Package manager | In use | pnpm 11.22.0 with a committed lockfile |
 | Tests | In use | Vitest 5 with synthetic fixtures; no real Telegram calls |
-| Database | Selected, not integrated | PostgreSQL 18 with Drizzle and reviewed SQL migrations |
+| Database | Local schema and group registry in use | PostgreSQL 18 with Drizzle and reviewed SQL migrations |
 | HTTP API | Planned | Fastify with schema-validated contracts |
 | Administration UI | Planned | React, Vite, and TypeScript Telegram Mini App |
 | Durable background work | Planned | PostgreSQL-backed inbox, outbox, and scheduled jobs; Redis/Valkey is not required initially |
 
-The database is not needed to run the current `/start` bootstrap. PostgreSQL schema, permissions, jobs, and storage remain implementation work; track them in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
+The first database slice stores installation identity and group metadata only. It does not store message bodies, authorize administrators, or perform moderation. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
 
 ## Run locally
 
-Requirements: Windows, Linux, or macOS; Node.js 24; Corepack; and a development bot token created for this project through Telegram's BotFather. The token is a local secret. Never send it in chat, commit it, or paste it into an issue.
+Requirements: Windows, Linux, or macOS; Node.js 24; Corepack; a local PostgreSQL 18 service; and a development bot token created for this project through Telegram's BotFather. The token and database URLs are local secrets. Never send them in chat, commit them, or paste them into an issue.
 
 ```powershell
 corepack enable pnpm
@@ -108,13 +115,24 @@ pnpm install --frozen-lockfile
 Copy-Item .env.example .env
 ```
 
-Put the development token in `.env` as `FOAB_TELEGRAM_BOT_TOKEN=...`, then start the bot:
+Put the development token in `.env` as `FOAB_TELEGRAM_BOT_TOKEN=...`. To provision a local database, temporarily add your PostgreSQL administrator password to the ignored `.env` as `FOAB_PG_ADMIN_PASSWORD=...`, then run:
+
+```powershell
+pnpm db:provision:local
+pnpm db:migrate
+pnpm db:migrate:test
+pnpm test:integration
+```
+
+The provisioner creates separate development and test databases, generates local role credentials, writes runtime, migration, and test URLs to separate ignored environment files, and removes the temporary administrator password from `.env`. The bot process receives only its runtime database URL. It refuses to take over an existing database owned by another role. Do not put an administrator password in `.env.example` or source control.
+
+Start the bot after the local databases are migrated:
 
 ```powershell
 pnpm dev
 ```
 
-The current bootstrap starts Telegram long polling and answers `/start`. It does not read group history, connect to PostgreSQL, or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development.
+On startup, the bot publishes its current command menu through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. It does not read message history, check administrator authority, or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
 
 ## Checks
 
@@ -125,7 +143,7 @@ pnpm audit --audit-level high
 pnpm security:secrets
 ```
 
-`pnpm check` runs strict type checking and local unit tests. `pnpm build` emits the runtime to the ignored `dist/` directory. `pnpm audit` checks the locked dependency tree against the configured advisory database at run time. `pnpm security:secrets` runs synthetic scanner self-tests and secret scans over Git-visible working-tree paths and available Git history; ignored local files are excluded, and ignored paths in the Git index fail the check. These checks are useful evidence, not a certification that the application is secure or that GitHub enforcement is active.
+`pnpm check` runs strict type checking and local unit tests. `pnpm test:integration` uses only the local `foab_test` database and verifies group isolation. `pnpm build` emits the runtime to the ignored `dist/` directory. `pnpm audit` checks the locked dependency tree against the configured advisory database at run time. `pnpm security:secrets` runs synthetic scanner self-tests and secret scans over Git-visible working-tree paths and available Git history; ignored local files are excluded, and ignored paths in the Git index fail the check. These checks are useful evidence, not a certification that the application is secure or that GitHub enforcement is active.
 
 ## Security reports and contributions
 

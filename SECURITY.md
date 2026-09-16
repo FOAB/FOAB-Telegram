@@ -2,7 +2,7 @@
 
 ## System and scope
 
-FOAB is planned as an open-source, self-hosted Telegram group administration bot. A single installation and bot token will serve multiple groups. The planned system includes a TypeScript/Node.js bot, PostgreSQL storage, an HTTP API, and a Telegram Mini App. The repository currently contains planning material and the security bootstrap; production services, routes, and deployment infrastructure are not yet implemented.
+FOAB is an open-source, self-hosted Telegram group administration bot. One installation and bot token can serve multiple groups. The repository currently includes a strict TypeScript/Node.js bot bootstrap, PostgreSQL installation/group storage, and the initial `/start` and `/help` commands. Moderation, group authorization, durable jobs, the HTTP API, Telegram Mini App, and deployment infrastructure are not yet implemented.
 
 This policy applies to repository code, build and CI workflows, local development, the bot, API, Mini App, database, imported/exported group data, and integrations as they are added. No production environment or public service endpoint has been established by this repository.
 
@@ -43,7 +43,7 @@ Only local repository and synthetic test assets are authorized for automated tes
 
 ## Known limitations and compensating controls
 
-The bot application and data schema are not implemented. Therefore authorization, group isolation, session security, rate limits, database isolation, audit integrity, webhook handling, Mini App security headers, backup/restore, and Telegram permission behavior have not yet been runtime-tested.
+The initial application stores installation-scoped group metadata and local integration tests verify separation between synthetic installations. It does not yet authorize group administrators or perform moderation. Session security, rate limits, durable audit, webhook handling, Mini App security headers, backup/restore, and Telegram permission behavior have not yet been runtime-tested.
 
 The repository scanner is a defense-in-depth check, not a guarantee that every secret format is detected. Its tool version is pinned and checksum-validated. It scans the working tree and Git history without provider verification; rotate any confirmed exposed credential and investigate its exposure even after removing it from files or history.
 

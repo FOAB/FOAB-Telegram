@@ -4,16 +4,16 @@ This runbook turns the BotFather screens supplied for FOAB into explicit setup d
 
 ## Current stage
 
-The bootstrap needs only a valid bot token and calls Telegram's read-only `getMe` method for credential validation. It does not need group membership, administrator rights, privacy changes, Mini App URLs, Guard Mode, inline mode, or payment configuration. No BotFather changes are required for the current local startup and credential checks.
+The current runtime requires a valid bot token and a migrated local PostgreSQL database. On startup it publishes `/start` and `/help` with `setMyCommands`, then starts long polling. Group commands are marked ephemeral and their responses target only the requesting user; delivery is not guaranteed and must be verified in a supported client. The bot stores group metadata when Telegram reports a bot membership change or when someone invokes `/start` or `/help` in a group. It does not require group administrator rights for this registry, and it does not perform moderation. The screenshots show Allow Groups enabled and Group Privacy enabled, which are sufficient for these initial command and membership updates.
 
-The token is stored in the local ignored `.env` file. Do not paste it into chat, logs, screenshots, tests, or commits. A local `getMe` check succeeded without printing the token; no message was sent and no group was accessed.
+The bot token and runtime database URL are in the local ignored `.env`; migration credentials are in `.env.database`, and the integration-test URL is in `.env.test`. Do not paste any of them into chat, logs, screenshots, tests, or commits. Startup and command-menu publication have not been tested against Telegram during the current implementation slice; no live group or moderation action was used.
 
 ## Decisions from the supplied screens
 
 | BotFather setting | Screenshot state | FOAB decision |
 |---|---|---|
 | Allow Groups | On | Keep enabled for installation in target groups. This does not grant moderation permissions. |
-| Group Privacy | On | Keep enabled for the bootstrap. A future feature that must inspect ordinary member messages needs full message updates; for that test, use a dedicated test group and follow the controlled steps below. Privacy mode affects which updates arrive; it is not an authorization check. |
+| Group Privacy | On | Keep enabled for the current commands and membership registry. Features that inspect ordinary member messages need full message updates; use a dedicated test group and follow the controlled steps below before testing them. Privacy mode affects which updates arrive; it is not an authorization check. |
 | Group Admin Rights | 0 of 13 | Keep unset until a feature needs a specific right. Grant only the smallest required rights, then validate the bot's current Telegram status and rights before each action. |
 | Channel Admin Rights | 0 of 13 | Keep unset unless a group explicitly configures channel publishing or linked-channel management. |
 | Same-Origin Restriction | On | Keep enabled. Do not opt out to make an integration easier. Host the Mini App on its configured origin and validate Telegram launch data on the backend. |
@@ -29,7 +29,7 @@ The token is stored in the local ignored `.env` file. Do not paste it into chat,
 | Login Widget / OpenID Connect | Not configured | No separate website login is planned for the initial Mini App. Telegram Mini App launch data must be validated server-side. Do not add a parallel login surface without a product need. |
 | Restrict bot usage | Off | Optional owner-managed access restriction, not a substitute for FOAB's group-scoped authorization. Keep off for a bot intended for multiple communities unless the operator deliberately chooses a private allowlist. |
 | Welcome image and profile description | Empty | Optional profile presentation. This is separate from per-group welcome messages and can be configured after product copy is approved. |
-| Commands | Not configured | The application will own its canonical command registry and publish commands through `setMyCommands`, including localized and role-aware scopes. Telegram's menu is discoverability only; every command handler must authorize the actor and target chat. |
+| Commands | Not configured in the supplied screenshot | The application currently publishes ordinary `/start` and `/help` for private chats and ephemeral versions for groups through `setMyCommands`. Group responses target the invoking member and never fall back to a public reply if ephemeral delivery fails. The menu is discoverability only; future command handlers must authorize the actor and target chat. |
 | Payment providers / Telegram Stars | Providers visible; no FOAB product configured | No payment setup is needed. Payments are an optional future product track, separate from core moderation. If digital goods or services are ever sold inside Telegram, use the current Telegram Stars requirements and implement transaction, delivery, support, and refund handling before activation. |
 
 ## Group privacy and message visibility
@@ -45,7 +45,7 @@ In either path, test only synthetic messages and known test participants. The ap
 
 ## Command menu and multi-group behavior
 
-`setMyCommands` supports scopes for default commands, private chats, all groups, chat administrators, a specific chat, and a specific chat member. It also supports language-specific command descriptions and accepts up to 100 commands per list. FOAB should publish commands from one typed registry with separate user/admin visibility and locale catalogs. Menu visibility is never permission enforcement; handlers must re-check current authority in the target group.
+`setMyCommands` supports scopes for default commands, private chats, all groups, chat administrators, a specific chat, and a specific chat member. It also supports language-specific command descriptions and accepts up to 100 commands per list. FOAB currently publishes only `/start` and `/help`, marked ephemeral in groups; role-aware visibility and localized descriptions remain future work. Menu visibility is never permission enforcement; handlers must re-check current authority in the target group. See Telegram's [ephemeral messages and commands](https://core.telegram.org/bots/api#ephemeral-messages-and-commands) contract for delivery eligibility and its 15-second reply window.
 
 The relevant Telegram methods and scopes are documented in [`setMyCommands`](https://core.telegram.org/bots/api#setmycommands). If an administrator opens a private chat to configure one of several groups, the selected group must remain explicit and must not be inferred from the command-menu scope.
 

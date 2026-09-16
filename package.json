@@ -12,15 +12,24 @@
     "dev": "pnpm build && node --env-file-if-exists=.env dist/main.js",
     "start": "node dist/main.js",
     "test": "vitest run",
+    "test:integration": "node --env-file-if-exists=.env.test node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit",
     "check": "pnpm typecheck && pnpm test",
+    "db:provision:local": "node --env-file-if-exists=.env scripts/db/provision-local.ts",
+    "db:generate": "node --env-file-if-exists=.env.database node_modules/drizzle-kit/bin.cjs generate --config=drizzle.config.ts",
+    "db:migrate": "node --env-file-if-exists=.env.database node_modules/drizzle-kit/bin.cjs migrate --config=drizzle.config.ts",
+    "db:migrate:test": "node --env-file-if-exists=.env.database node_modules/drizzle-kit/bin.cjs migrate --config=drizzle.test.config.ts",
     "security:secrets": "pwsh -NoProfile -File scripts/security/Invoke-SecurityChecks.ps1 -SelfTest"
   },
   "dependencies": {
-    "grammy": "1.46.0"
+    "drizzle-orm": "0.45.2",
+    "grammy": "1.46.0",
+    "pg": "8.23.0"
   },
   "devDependencies": {
     "@types/node": "24.13.4",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.10",
     "typescript": "7.0.2",
     "vitest": "5.0.1"
   }

@@ -15,18 +15,18 @@ This ledger tracks implemented repository controls separately from application p
 
 ## Application security evidence ledger
 
-The current application is only a token-validated grammY bootstrap with a non-mutating `/start` reply. It does not yet store or administer group data. The controls below are required for the corresponding features; do not infer their implementation from the repository baseline.
+The current application validates its Telegram token/database URL, stores installation-scoped group metadata, and provides initial `/start` and `/help` handlers. It does not authorize group administrators or administer groups. The controls below are required for the corresponding features; do not infer their implementation from the repository baseline.
 
 | Control area | Required proof when implemented | Status |
 |---|---|---|
 | Identity, roles, capabilities, protected targets | Allow/deny matrix for installation owner, Telegram admin, FOAB moderator, member, anonymous admin, bot, and revoked grant. Reauthorize every mutation. | Not implemented or tested. |
-| Multi-group isolation | Use synthetic groups and installations for reads, writes, search, exports, caches, queued jobs, retries, and stale callbacks. Prove group A cannot access group B. | Product requirement documented; storage and tests not implemented. |
+| Multi-group isolation | Use synthetic groups and installations for reads, writes, search, exports, caches, queued jobs, retries, and stale callbacks. Prove group A cannot access group B. | Initial PostgreSQL composite keys, scoped group repository queries, and cross-installation integration tests implemented; broader feature surfaces remain untested. |
 | Federation consent and isolation | Owner consent, explicit scopes, source provenance, cross-group effects, revocation, and per-destination outcome tests. | Product contract documented; feature not implemented. |
 | Field allowlists and output filtering | Reject unauthorized `role`, `owner`, `instance`, and private evidence fields; redact output by actor and destination. | Not implemented or tested. |
 | Mini App authentication and sessions | Invalid, replayed, and expired init data; origin/CSRF; session renewal; output redaction; direct-object access denial. | Not implemented or tested. |
 | Telegram updates, webhooks, and API errors | Invalid webhook secret, duplicate/out-of-order updates, unknown fields, retries, timeouts, and uncertain-effect fixtures. | Long-poll bootstrap exists; webhook and durable update processing are not implemented. |
 | Moderation and sanctions | Concurrent causes, protected targets, revoked rights, idempotency, delayed jobs, and privacy-safe feedback. | Not implemented or tested. |
-| PostgreSQL | Scoped repositories, constraints, parameterized SQL, migration rollback/recovery, concurrent worker claims, and least-privilege roles. | PostgreSQL was checked locally; no FOAB database, schema, migration, or role exists. |
+| PostgreSQL | Scoped repositories, constraints, parameterized SQL, migration rollback/recovery, concurrent worker claims, and least-privilege roles. | Initial schema/migration and installation-scoped repository verified locally; migration/runtime/test roles are separated. Rollback/recovery and worker claims remain unimplemented. |
 | Imports, files, and exports | Malformed/oversized inputs, path traversal, content type, formula injection, minimization, cancellation, and authorized scope. | Not implemented or tested. |
 | Runtime security and recovery | Rate limits, retention, backup/restore, clean install, operational diagnostics, and real-client capability checks. | Not implemented or tested. |
 

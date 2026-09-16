@@ -29,6 +29,8 @@ The compile-only contract currently checks:
 
 These are SDK/type checks, not proof that a Telegram client displays a feature, that a bot has the required rights, or that the API will deliver an ephemeral message.
 
+The current `/start` and `/help` group menu entries set `is_ephemeral: true`. Their handler responses set `ephemeral_message_parameters.receiver_user_id` from the authenticated update and, when the incoming command includes an ephemeral message ID, reply using `reply_parameters.ephemeral_message_id`. Delivery failures do not trigger a public group fallback. See Telegram's current [ephemeral message and command rules](https://core.telegram.org/bots/api#ephemeral-messages-and-commands); actual client delivery remains an open verification gate.
+
 FOAB's command registry will publish separate member and administrator menu lists using Telegram's command scopes and language codes. The menu is discoverability only; command handlers still perform server-side authorization for the actual group and actor. See the [BotFather setup checklist](../developer/botfather-setup.md).
 
 ## Behavior and privacy constraints

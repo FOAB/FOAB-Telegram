@@ -1,4 +1,8 @@
 import { loadRuntimeConfig } from './config/environment.js';
+import { createDatabase } from './db/database.js';
+import { ensureCurrentInstallation } from './db/installation-repository.js';
+import { GroupRepository } from './db/group-repository.js';
+import { groupCommandMenu, privateCommandMenu } from './telegram/commands.js';
 import { createBot } from './telegram/create-bot.js';
 
 interface SafeLogFields {
@@ -24,23 +28,47 @@ function writeLog(
   process.stdout.write(output);
 }
 
-/** Starts long polling and installs update-error handling without logging raw updates. */
+/** Validates configuration, initializes PostgreSQL state, and starts the Telegram poller. */
 async function main(): Promise<void> {
   const config = loadRuntimeConfig();
-  const bot = createBot(config.telegramBotToken);
-
-  bot.catch(({ ctx, error }) => {
-    writeLog('error', 'telegram_update_failed', {
-      updateId: ctx.update.update_id,
-      errorType: error instanceof Error ? error.name : 'UnknownError',
+  const database = createDatabase(config.databaseUrl);
+  database.pool.on('error', (error: Error) => {
+    writeLog('error', 'database_idle_connection_failed', {
+      errorType: error.name,
     });
   });
 
-  await bot.start({
-    onStart: (botInfo) => {
-      writeLog('info', 'telegram_bot_started', { botId: botInfo.id });
-    },
-  });
+  try {
+    await database.pool.query('SELECT 1');
+    const installationId = await ensureCurrentInstallation(database.db);
+    const bot = createBot(config.telegramBotToken, {
+      installationId,
+      groups: new GroupRepository(database.db),
+    });
+
+    bot.catch(({ ctx, error }) => {
+      writeLog('error', 'telegram_update_failed', {
+        updateId: ctx.update.update_id,
+        errorType: error instanceof Error ? error.name : 'UnknownError',
+      });
+    });
+
+    await bot.api.setMyCommands(privateCommandMenu, {
+      scope: { type: 'all_private_chats' },
+    });
+    await bot.api.setMyCommands(groupCommandMenu, {
+      scope: { type: 'all_group_chats' },
+    });
+
+    await bot.start({
+      allowed_updates: ['message', 'my_chat_member'],
+      onStart: (botInfo) => {
+        writeLog('info', 'telegram_bot_started', { botId: botInfo.id });
+      },
+    });
+  } finally {
+    await database.pool.end();
+  }
 }
 
 void main().catch((error: unknown) => {
