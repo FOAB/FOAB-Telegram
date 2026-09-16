@@ -1,0 +1,1 @@
+ALTER TABLE "telegram_groups" ADD COLUMN "settings_revision" integer DEFAULT 0 NOT NULL;

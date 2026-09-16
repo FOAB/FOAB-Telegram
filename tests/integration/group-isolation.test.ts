@@ -144,6 +144,67 @@ describe('installation and group persistence boundaries', () => {
     expect(observed.botStatus).toBe('left');
     expect(observed.isActive).toBe(false);
   });
+
+  it('updates only the expected group settings revision', async () => {
+    const chatId = -9_007_199_253_999_998n;
+    await groups.register(installationA, {
+      telegramChatId: chatId,
+      chatType: 'supergroup',
+      title: 'Synthetic Settings Group',
+      username: null,
+      botStatus: 'administrator',
+      isActive: true,
+    });
+
+    const initial = await groups.findByChatId(installationA, chatId);
+    if (!initial) {
+      throw new Error('The synthetic settings group was not persisted.');
+    }
+
+    const updated = await groups.updateSettings(
+      installationA,
+      chatId,
+      initial.settingsRevision,
+      { locale: 'pt-BR', timeZone: 'America/Sao_Paulo' },
+    );
+    const stale = await groups.updateSettings(
+      installationA,
+      chatId,
+      initial.settingsRevision,
+      { locale: 'es-ES' },
+    );
+
+    expect(updated?.locale).toBe('pt-BR');
+    expect(updated?.timeZone).toBe('America/Sao_Paulo');
+    expect(updated?.settingsRevision).toBe(initial.settingsRevision + 1);
+    expect(stale).toBeNull();
+  });
+
+  it('does not update a group from another installation', async () => {
+    const chatId = -9_007_199_253_999_997n;
+    await groups.register(installationA, {
+      telegramChatId: chatId,
+      chatType: 'group',
+      title: 'Synthetic Scoped Settings Group',
+      username: null,
+      botStatus: 'member',
+      isActive: true,
+    });
+    const group = await groups.findByChatId(installationA, chatId);
+    if (!group) {
+      throw new Error('The synthetic scoped settings group was not persisted.');
+    }
+
+    const crossInstallationUpdate = await groups.updateSettings(
+      installationB,
+      chatId,
+      group.settingsRevision,
+      { locale: 'pt-BR' },
+    );
+
+    expect(crossInstallationUpdate).toBeNull();
+    expect((await groups.findByChatId(installationA, chatId))?.locale).toBe('en-US');
+  });
 });
 
 async function createInstallation(db: FoabDatabase): Promise<string> {

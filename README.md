@@ -6,7 +6,7 @@ This repository documents the intended product and its current implementation se
 
 ## Project status
 
-The current runnable bot uses strict TypeScript, Node.js 24, grammY, and PostgreSQL. It validates its token and database URL, loads a database-owned installation identity, publishes the initial `/start` and `/help` command menu, and starts long polling. It records group metadata and the bot's membership state. Private chats receive ordinary responses; group commands are registered as ephemeral and their responses target only the requesting member.
+The current runnable bot uses strict TypeScript, Node.js 24, grammY, and PostgreSQL. It validates its token and database URL, loads a database-owned installation identity, publishes localized role-scoped command menus, and starts long polling. It records group metadata, the bot's membership state, and the group's language/time-zone settings. Private chats receive ordinary responses; group commands are registered as ephemeral and their responses target only the requesting member.
 
 Implemented foundation:
 
@@ -14,8 +14,9 @@ Implemented foundation:
 - PostgreSQL schema and reviewed Drizzle migration for installation identity and group metadata, with every group key/query scoped by installation.
 - Separate database migration and runtime roles; the runtime role has data access but no schema or cluster-administration privileges.
 - Automatic group registration from Telegram bot-membership updates and onboarding commands; removing the bot marks that group inactive.
-- Ephemeral group `/start` and `/help` commands and requester-only ephemeral responses; Telegram delivery and client support are not yet live-tested.
-- Initial en-US, pt-BR, and es-ES start/help messages, with the group locale defaulting to en-US.
+- Ephemeral group `/start`, `/help`, `/settings`, and `/cancel` commands and requester-only ephemeral responses; Telegram delivery and client support are not yet live-tested.
+- Initial en-US, pt-BR, and es-ES onboarding, help, and settings messages, with the group locale defaulting to en-US.
+- Current group-administrator checks for settings, installation/group-scoped settings writes, and optimistic settings revisions.
 - A repeatable local PostgreSQL provisioner and synthetic integration tests for concurrent startup and cross-installation isolation.
 - Strict TypeScript compiler settings and synthetic unit tests.
 - A dated Telegram Bot API and SDK compatibility record with compile-time contracts and synthetic fixtures.
@@ -23,10 +24,10 @@ Implemented foundation:
 
 Not implemented yet:
 
-- Administrator authorization, settings, and all moderation or protection actions.
+- Broader administrator roles and authorization, plus all moderation or protection actions.
 - Durable update processing, jobs, audit records, and recovery workflows.
 - Moderation, automatic replies, admission/Guard, federations, or any other group feature.
-- The HTTP API, Mini App, deployment packaging, and the three-language interface.
+- The HTTP API, Mini App, deployment packaging, and the full three-language interface.
 
 See the [feature checklist](docs/product/feature-checklist.md) for planned, implemented, and verified capabilities, and [implementation progress](docs/developer/progress.md) for current evidence and the next task. The [BotFather setup checklist](docs/developer/botfather-setup.md) records when owner-side configuration is and is not needed.
 
@@ -87,7 +88,7 @@ Current safeguards include:
 - **Strict typing and dependency checks:** strict TypeScript checks the application contracts; the lockfile pins package versions and an age policy delays newly published dependencies. Type checking reduces certain coding mistakes but is not an authorization or security proof.
 - **Least privilege in CI:** repository permissions are read-only for the secret-scan workflow. The actual GitHub workflow result and repository settings such as branch protection must be verified on GitHub; YAML alone does not enforce them.
 
-Application safeguards still to implement and test include server-side authorization on every mutation, feature-specific data access, federation consent, input/output allowlists, rate limits, safe durable job retries, audit redaction, retention/export/deletion rules, and Mini App authentication. The current group registry is scoped, but onboarding does not authorize moderation. Synthetic fixtures and local checks never authorize testing against third-party bots, groups, or production accounts.
+Application safeguards still to implement and test include server-side authorization for the remaining mutations, feature-specific data access, federation consent, input/output allowlists, rate limits, safe durable job retries, audit redaction, retention/export/deletion rules, and Mini App authentication. The current settings path authorizes only the exact current group administrator and does not authorize moderation. Synthetic fixtures and local checks never authorize testing against third-party bots, groups, or production accounts.
 
 ## Technology
 
@@ -102,7 +103,7 @@ Application safeguards still to implement and test include server-side authoriza
 | Administration UI | Planned | React, Vite, and TypeScript Telegram Mini App |
 | Durable background work | Planned | PostgreSQL-backed inbox, outbox, and scheduled jobs; Redis/Valkey is not required initially |
 
-The first database slice stores installation identity and group metadata only. It does not store message bodies, authorize administrators, or perform moderation. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
+The first database slice stores installation identity, group metadata, and versioned group language/time-zone settings. It does not store message bodies or perform moderation. The settings command checks current authority for the exact group before writing. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
 
 ## Run locally
 
@@ -132,7 +133,7 @@ Start the bot after the local databases are migrated:
 pnpm dev
 ```
 
-On startup, the bot publishes its current command menu through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. It does not read message history, check administrator authority, or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
+On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing the group's language or time zone. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
 
 ## Checks
 

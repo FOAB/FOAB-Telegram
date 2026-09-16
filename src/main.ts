@@ -2,7 +2,12 @@ import { loadRuntimeConfig } from './config/environment.js';
 import { createDatabase } from './db/database.js';
 import { ensureCurrentInstallation } from './db/installation-repository.js';
 import { GroupRepository } from './db/group-repository.js';
-import { groupCommandMenu, privateCommandMenu } from './telegram/commands.js';
+import {
+  groupAdministratorCommandMenu,
+  groupCommandMenu,
+  localizedCommandMenus,
+  privateCommandMenu,
+} from './telegram/commands.js';
 import { createBot } from './telegram/create-bot.js';
 
 interface SafeLogFields {
@@ -59,6 +64,23 @@ async function main(): Promise<void> {
     await bot.api.setMyCommands(groupCommandMenu, {
       scope: { type: 'all_group_chats' },
     });
+    await bot.api.setMyCommands(groupAdministratorCommandMenu, {
+      scope: { type: 'all_chat_administrators' },
+    });
+    for (const menu of localizedCommandMenus) {
+      await bot.api.setMyCommands(menu.privateCommands, {
+        scope: { type: 'all_private_chats' },
+        language_code: menu.languageCode,
+      });
+      await bot.api.setMyCommands(menu.groupCommands, {
+        scope: { type: 'all_group_chats' },
+        language_code: menu.languageCode,
+      });
+      await bot.api.setMyCommands(menu.groupAdministratorCommands, {
+        scope: { type: 'all_chat_administrators' },
+        language_code: menu.languageCode,
+      });
+    }
 
     await bot.start({
       allowed_updates: ['message', 'my_chat_member'],

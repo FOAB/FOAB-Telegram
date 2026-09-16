@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { FoabDatabase } from './database.js';
 import type { BotGroupStatus, GroupChatType } from './schema.js';
 import { telegramGroups } from './schema.js';
@@ -21,6 +21,12 @@ export interface ObserveGroupInput {
   readonly username: string | null;
 }
 
+/** Allowlisted group settings that can be changed by an authorized administrator. */
+export interface GroupSettingsUpdate {
+  readonly locale?: string;
+  readonly timeZone?: string;
+}
+
 /** Persisted group fields safe for internal application use. */
 export interface GroupRecord {
   readonly installationId: string;
@@ -30,6 +36,7 @@ export interface GroupRecord {
   readonly username: string | null;
   readonly locale: string;
   readonly timeZone: string;
+  readonly settingsRevision: number;
   readonly botStatus: BotGroupStatus;
   readonly isActive: boolean;
   readonly createdAt: Date;
@@ -161,6 +168,57 @@ export class GroupRepository {
         ),
       )
       .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Applies an allowlisted settings patch only when the caller still holds the
+   * revision that was shown to them. The group and installation are both part
+   * of the update predicate, so a stale or cross-group write cannot succeed.
+   *
+   * @param installationId - Server-derived installation identity.
+   * @param telegramChatId - Chat ID received from the authenticated update.
+   * @param expectedRevision - Revision displayed by the settings command.
+   * @param update - Validated settings fields; unknown fields cannot enter this repository.
+   * @returns The new scoped record, or `null` when the group is inactive or stale.
+   */
+  public async updateSettings(
+    installationId: string,
+    telegramChatId: bigint,
+    expectedRevision: number,
+    update: GroupSettingsUpdate,
+  ): Promise<GroupRecord | null> {
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+      throw new RangeError('Settings revision must be a non-negative integer.');
+    }
+    if (update.locale === undefined && update.timeZone === undefined) {
+      throw new RangeError('At least one group setting must be provided.');
+    }
+    if (update.locale !== undefined && update.locale.length > 16) {
+      throw new RangeError('Group locale exceeds the maximum supported length.');
+    }
+    if (update.timeZone !== undefined && update.timeZone.length > 64) {
+      throw new RangeError('Group time zone exceeds the maximum supported length.');
+    }
+
+    const rows = await this.db
+      .update(telegramGroups)
+      .set({
+        ...(update.locale === undefined ? {} : { locale: update.locale }),
+        ...(update.timeZone === undefined ? {} : { timeZone: update.timeZone }),
+        settingsRevision: sql`${telegramGroups.settingsRevision} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(telegramGroups.installationId, installationId),
+          eq(telegramGroups.telegramChatId, telegramChatId),
+          eq(telegramGroups.isActive, true),
+          eq(telegramGroups.settingsRevision, expectedRevision),
+        ),
+      )
+      .returning();
 
     return rows[0] ?? null;
   }

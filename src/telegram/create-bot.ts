@@ -3,19 +3,27 @@ import type { Message } from 'grammy/types';
 import type { GroupRepository } from '../db/group-repository.js';
 import type { BotGroupStatus } from '../db/schema.js';
 import {
+  getHelpMessage,
   getMessages,
   localeFromTelegram,
   supportedLocale,
 } from '../i18n/messages.js';
+import { isCurrentGroupAdministrator } from './authorization.js';
+import {
+  parseSettingsArguments,
+  type SettingsCommand,
+} from './commands.js';
+import { ActiveFlowStore, type FlowKey } from './flow-state.js';
 
 /** Dependencies required by handlers that persist group scope. */
 export interface BotDependencies {
   readonly installationId: string;
   readonly groups: GroupRepository;
+  readonly flows?: ActiveFlowStore;
 }
 
 /**
- * Creates the grammY bot with minimal onboarding and group membership handlers.
+ * Creates the grammY bot with onboarding, help, and group settings handlers.
  *
  * @param token - Telegram bot token read from validated runtime configuration.
  * @param dependencies - Server-owned installation identity and scoped repositories.
@@ -23,6 +31,7 @@ export interface BotDependencies {
  */
 export function createBot(token: string, dependencies: BotDependencies): Bot<Context> {
   const bot = new Bot(token);
+  const flows = dependencies.flows ?? new ActiveFlowStore();
 
   bot.on('my_chat_member', async (context) => {
     const chat = context.myChatMember.chat;
@@ -60,7 +69,78 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     const locale = group
       ? supportedLocale(group.locale)
       : localeFromTelegram(context.from?.language_code);
-    await replyToCommand(context, getMessages(locale).help);
+    const administrator = group ? await isCurrentGroupAdministrator(context) : false;
+    await replyToCommand(context, getHelpMessage(locale, administrator));
+  });
+
+  bot.command('settings', async (context) => {
+    const group = await observeCurrentGroup(context, dependencies);
+    const locale = group
+      ? supportedLocale(group.locale)
+      : localeFromTelegram(context.from?.language_code);
+    const messages = getMessages(locale);
+
+    if (!group) {
+      await replyToCommand(context, messages.privateSettings);
+      return;
+    }
+    if (!group.isActive || !(await isCurrentGroupAdministrator(context))) {
+      await replyToCommand(context, messages.settingsNotAuthorized);
+      return;
+    }
+
+    const settingsCommand = parseSettingsArguments(
+      typeof context.match === 'string' ? context.match : '',
+    );
+    if (settingsCommand.kind === 'invalid') {
+      await replyToCommand(context, messages.settingsUsage);
+      return;
+    }
+
+    const key = getFlowKey(context, dependencies.installationId);
+    if (!key) {
+      await replyToCommand(context, messages.settingsNotAuthorized);
+      return;
+    }
+
+    if (settingsCommand.kind === 'show') {
+      flows.begin(key, 'settings');
+      await replyToCommand(
+        context,
+        messages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
+      );
+      return;
+    }
+
+    const update = settingsUpdateFromCommand(settingsCommand);
+    const updated = await dependencies.groups.updateSettings(
+      dependencies.installationId,
+      group.telegramChatId,
+      group.settingsRevision,
+      update,
+    );
+    if (!updated) {
+      await replyToCommand(context, messages.settingsConflict);
+      return;
+    }
+
+    flows.cancel(key, 'settings');
+    await replyToCommand(context, getMessages(supportedLocale(updated.locale)).settingsUpdated);
+  });
+
+  bot.command('cancel', async (context) => {
+    const group = await observeCurrentGroup(context, dependencies);
+    const locale = group
+      ? supportedLocale(group.locale)
+      : localeFromTelegram(context.from?.language_code);
+    const key = getFlowKey(context, dependencies.installationId, group?.telegramChatId);
+    const messages = getMessages(locale);
+    await replyToCommand(
+      context,
+      key && flows.cancel(key, 'settings')
+        ? messages.cancelCompleted
+        : messages.cancelNoActiveFlow,
+    );
   });
 
   return bot;
@@ -119,6 +199,36 @@ async function observeCurrentGroup(
     title: chat.title,
     username: chat.username ?? null,
   });
+}
+
+/** Creates a cancellation identity from the authenticated update scope. */
+function getFlowKey(
+  context: Context,
+  installationId: string,
+  groupChatId?: bigint,
+): FlowKey | null {
+  const sender = context.from;
+  const chat = context.chat;
+  if (!sender || sender.is_bot || !chat || groupChatId === undefined) {
+    return null;
+  }
+  if (chat.type !== 'group' && chat.type !== 'supergroup') {
+    return null;
+  }
+
+  return {
+    installationId,
+    telegramChatId: groupChatId,
+    userId: sender.id,
+  };
+}
+
+/** Converts the parser's closed union into the repository's allowlisted patch. */
+function settingsUpdateFromCommand(command: Exclude<SettingsCommand, { kind: 'show' | 'invalid' }>) {
+  if (command.kind === 'set-locale') {
+    return { locale: command.value } as const;
+  }
+  return { timeZone: command.value } as const;
 }
 
 /** Converts Telegram's current bot membership status into the persisted contract. */

@@ -13,6 +13,7 @@ describe('private group command feedback', () => {
     expect(groupCommandMenu.map((command) => command.is_ephemeral)).toEqual([
       true,
       true,
+      true,
     ]);
     expect(
       privateCommandMenu.every(

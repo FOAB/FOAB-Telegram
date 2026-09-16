@@ -39,7 +39,7 @@ Generated migration SQL and Drizzle's journal are source-controlled. Review them
 - Include the installation UUID and Telegram chat ID in every group lookup, update, and list operation.
 - Membership service updates set the bot's current group status. Ordinary `/start` and `/help` updates refresh only group metadata, so a delayed command cannot reactivate a group after a bot-removal event.
 - Database connection and statement timeouts are bounded so local database stalls do not leave a command handler waiting indefinitely. Ephemeral replies to an incoming ephemeral command must still meet Telegram's short response window.
-- A removed or kicked bot is stored as inactive. The registry does not imply that the caller is a group administrator or authorize moderation.
+- A removed or kicked bot is stored as inactive. The registry does not imply that the caller is a group administrator or authorize moderation; the settings command performs its own current Telegram administrator check.
 - Keep member names and message content out of this first schema. Add personal data only with a defined feature need, retention, and deletion contract.
 - Use synthetic installation and chat IDs in automated tests. Never point the integration suite at a production database or Telegram group.
 
