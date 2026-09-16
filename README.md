@@ -6,7 +6,7 @@ This repository documents the intended product and its current implementation se
 
 ## Project status
 
-The current runnable bot uses strict TypeScript, Node.js 24, grammY, and PostgreSQL. It validates its token and database URL, loads a database-owned installation identity, publishes localized role-scoped command menus, and starts long polling. It records group metadata, the bot's membership state, and the group's language/time-zone settings. Private chats receive ordinary responses; group commands are registered as ephemeral and their responses target only the requesting member.
+The current runnable bot uses strict TypeScript, Node.js 24, grammY, and PostgreSQL. It validates its token and database URL, loads a database-owned installation identity, normalizes supported Telegram updates, records durable update receipts, publishes localized role-scoped command menus, and starts long polling. It records group metadata, the bot's membership state, and the group's language/time-zone settings. Private chats receive ordinary responses; group commands are registered as ephemeral and their responses target only the requesting member.
 
 Implemented foundation:
 
@@ -18,6 +18,7 @@ Implemented foundation:
 - Initial en-US, pt-BR, and es-ES onboarding, help, and settings messages, with the group locale defaulting to en-US.
 - Current group-administrator checks for settings, installation/group-scoped settings writes, and optimistic settings revisions.
 - Private `/settings` group selection bound to the authenticated user and installation, with a fresh administrator check before each selected-group write.
+- Typed runtime update projection and installation-scoped inbox leases that suppress duplicate processing without storing raw update bodies.
 - A repeatable local PostgreSQL provisioner and synthetic integration tests for concurrent startup and cross-installation isolation.
 - Strict TypeScript compiler settings and synthetic unit tests.
 - A dated Telegram Bot API and SDK compatibility record with compile-time contracts and synthetic fixtures.
@@ -26,7 +27,7 @@ Implemented foundation:
 Not implemented yet:
 
 - Broader administrator roles and authorization, plus all moderation or protection actions.
-- Durable update processing, jobs, audit records, and recovery workflows.
+- Transactional outbox delivery, jobs, audit records, and recovery workflows.
 - Moderation, automatic replies, admission/Guard, federations, or any other group feature.
 - The HTTP API, Mini App, deployment packaging, and the full three-language interface.
 
@@ -104,7 +105,7 @@ Application safeguards still to implement and test include server-side authoriza
 | Administration UI | Planned | React, Vite, and TypeScript Telegram Mini App |
 | Durable background work | Planned | PostgreSQL-backed inbox, outbox, and scheduled jobs; Redis/Valkey is not required initially |
 
-The first database slice stores installation identity, group metadata, and versioned group language/time-zone settings. It does not store message bodies or perform moderation. The settings command checks current authority for the exact group before writing. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
+The current database slice stores installation identity, group metadata, versioned group language/time-zone settings, and metadata-only update receipts. It does not store message bodies or perform moderation. The settings command checks current authority for the exact group before writing. The inbox lease prevents duplicate update handling; a transactional outbox is still required before durable external effects. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
 
 ## Run locally
 

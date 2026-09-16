@@ -3,6 +3,7 @@ import { inArray } from 'drizzle-orm';
 import { createDatabase, type FoabDatabase } from '../../src/db/database.js';
 import { GroupRepository } from '../../src/db/group-repository.js';
 import { ensureCurrentInstallation } from '../../src/db/installation-repository.js';
+import { UpdateInboxRepository } from '../../src/db/update-inbox-repository.js';
 import { installations } from '../../src/db/schema.js';
 
 const testDatabaseUrl = process.env['FOAB_TEST_DATABASE_URL'];
@@ -21,6 +22,7 @@ if (
 
 const databaseHandle = createDatabase(testDatabaseUrl);
 const groups = new GroupRepository(databaseHandle.db);
+const inbox = new UpdateInboxRepository(databaseHandle.db);
 let database: FoabDatabase;
 let installationA: string;
 let installationB: string;
@@ -204,6 +206,27 @@ describe('installation and group persistence boundaries', () => {
 
     expect(crossInstallationUpdate).toBeNull();
     expect((await groups.findByChatId(installationA, chatId))?.locale).toBe('en-US');
+  });
+
+  it('claims one update once and suppresses concurrent duplicate delivery', async () => {
+    const updateId = 9_000_000_100;
+    const claims = await Promise.all([
+      inbox.claim(installationA, updateId, 'message'),
+      inbox.claim(installationA, updateId, 'message'),
+    ]);
+
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(await inbox.markProcessed(installationA, updateId)).toBe(true);
+    expect(await inbox.claim(installationA, updateId, 'message')).toBe(false);
+  });
+
+  it('releases failed updates for a bounded retry without changing installation scope', async () => {
+    const updateId = 9_000_000_101;
+    expect(await inbox.claim(installationA, updateId, 'my_chat_member')).toBe(true);
+    expect(await inbox.markFailed(installationA, updateId, 'Synthetic Handler Failure!')).toBe(true);
+    expect(await inbox.claim(installationA, updateId, 'my_chat_member')).toBe(true);
+    expect(await inbox.markProcessed(installationA, updateId)).toBe(true);
+    expect(await inbox.claim(installationB, updateId, 'my_chat_member')).toBe(true);
   });
 });
 

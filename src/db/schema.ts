@@ -26,6 +26,12 @@ export type BotGroupStatus =
   | 'left'
   | 'kicked';
 
+/** Supported update kinds entering the durable inbox. */
+export type TelegramUpdateKind = 'message' | 'my_chat_member';
+
+/** Durable inbox processing states. Failed leases can be claimed again. */
+export type TelegramInboxStatus = 'processing' | 'processed' | 'failed';
+
 /** A self-hosted FOAB installation. Each database initially represents one installation. */
 export const installations = pgTable('installations', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -83,6 +89,51 @@ export const telegramGroups = pgTable(
       table.installationId,
       table.isActive,
       table.updatedAt,
+    ),
+  ],
+);
+
+/**
+ * Deduplication record for one Telegram update in one installation.
+ * It deliberately stores no raw update body or user-generated message text.
+ */
+export const telegramUpdateInbox = pgTable(
+  'telegram_update_inbox',
+  {
+    installationId: uuid('installation_id')
+      .notNull()
+      .references(() => installations.id, { onDelete: 'cascade' }),
+    telegramUpdateId: bigint('telegram_update_id', { mode: 'bigint' }).notNull(),
+    updateKind: text('update_kind').$type<TelegramUpdateKind>().notNull(),
+    status: text('status').$type<TelegramInboxStatus>().default('processing').notNull(),
+    attemptCount: integer('attempt_count').default(1).notNull(),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    leaseUntil: timestamp('lease_until', { withTimezone: true }),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    lastErrorType: varchar('last_error_type', { length: 128 }),
+  },
+  (table) => [
+    primaryKey({
+      name: 'telegram_update_inbox_installation_update_pk',
+      columns: [table.installationId, table.telegramUpdateId],
+    }),
+    check(
+      'telegram_update_inbox_kind_check',
+      sql`${table.updateKind} IN ('message', 'my_chat_member')`,
+    ),
+    check(
+      'telegram_update_inbox_status_check',
+      sql`${table.status} IN ('processing', 'processed', 'failed')`,
+    ),
+    check(
+      'telegram_update_inbox_attempt_count_check',
+      sql`${table.attemptCount} > 0`,
+    ),
+    index('telegram_update_inbox_claim_idx').on(
+      table.installationId,
+      table.status,
+      table.leaseUntil,
     ),
   ],
 );

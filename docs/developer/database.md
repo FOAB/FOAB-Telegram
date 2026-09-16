@@ -1,6 +1,6 @@
 # Local PostgreSQL and Database Access
 
-FOAB uses one PostgreSQL database per self-hosted installation. One installation may register multiple Telegram groups. Every group row uses the installation UUID together with the Telegram chat ID as its primary key, and repository reads require both values. The initial schema stores group title, optional username, locale/time-zone defaults, bot membership status, and timestamps. It does not store message bodies or usernames of individual members.
+FOAB uses one PostgreSQL database per self-hosted installation. One installation may register multiple Telegram groups. Every group row uses the installation UUID together with the Telegram chat ID as its primary key, and repository reads require both values. The schema stores group title, optional username, locale/time-zone defaults, bot membership status, timestamps, and metadata-only Telegram update receipts. It does not store message bodies or usernames of individual members.
 
 ## Local setup
 
@@ -40,7 +40,8 @@ Generated migration SQL and Drizzle's journal are source-controlled. Review them
 - Membership service updates set the bot's current group status. Ordinary `/start` and `/help` updates refresh only group metadata, so a delayed command cannot reactivate a group after a bot-removal event.
 - Database connection and statement timeouts are bounded so local database stalls do not leave a command handler waiting indefinitely. Ephemeral replies to an incoming ephemeral command must still meet Telegram's short response window.
 - A removed or kicked bot is stored as inactive. The registry does not imply that the caller is a group administrator or authorize moderation; the settings command performs its own current Telegram administrator check.
+- The update inbox stores installation-scoped update ID, normalized update kind, processing state, attempt count, timestamps, lease, and sanitized error class only. It never stores the raw Telegram update or message text.
 - Keep member names and message content out of this first schema. Add personal data only with a defined feature need, retention, and deletion contract.
 - Use synthetic installation and chat IDs in automated tests. Never point the integration suite at a production database or Telegram group.
 
-The integration suite proves local PostgreSQL constraints, concurrent installation initialization, installation/chat scoping, and the stale-update invariant. It does not prove Bot API delivery, live Telegram permissions, moderation, backups, or production migration recovery.
+The integration suite proves local PostgreSQL constraints, concurrent installation initialization, installation/chat scoping, stale-update handling, optimistic settings writes, and concurrent inbox claims. It does not prove Bot API delivery, live Telegram permissions, transactional outbox delivery, moderation, backups, or production migration recovery.

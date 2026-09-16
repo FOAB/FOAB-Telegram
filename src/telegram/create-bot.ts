@@ -5,6 +5,7 @@ import type {
   GroupRepository,
   GroupSettingsUpdate,
 } from '../db/group-repository.js';
+import type { UpdateInboxRepository } from '../db/update-inbox-repository.js';
 import type { BotGroupStatus } from '../db/schema.js';
 import {
   getHelpMessage,
@@ -25,11 +26,13 @@ import {
   PrivateGroupSelectionStore,
   type PrivateSelectionKey,
 } from './private-selection.js';
+import { normalizeTelegramUpdate } from './update-normalizer.js';
 
 /** Dependencies required by handlers that persist group scope. */
 export interface BotDependencies {
   readonly installationId: string;
   readonly groups: GroupRepository;
+  readonly inbox?: UpdateInboxRepository;
   readonly flows?: ActiveFlowStore;
   readonly privateSelections?: PrivateGroupSelectionStore;
 }
@@ -45,6 +48,48 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
   const bot = new Bot(token);
   const flows = dependencies.flows ?? new ActiveFlowStore();
   const privateSelections = dependencies.privateSelections ?? new PrivateGroupSelectionStore();
+
+  bot.use(async (context, next) => {
+    const normalized = normalizeTelegramUpdate(context.update);
+    if (!normalized) {
+      return;
+    }
+    if (!dependencies.inbox) {
+      await next();
+      return;
+    }
+
+    const claimed = await dependencies.inbox.claim(
+      dependencies.installationId,
+      normalized.updateId,
+      normalized.kind,
+    );
+    if (!claimed) {
+      return;
+    }
+
+    try {
+      await next();
+      const processed = await dependencies.inbox.markProcessed(
+        dependencies.installationId,
+        normalized.updateId,
+      );
+      if (!processed) {
+        throw new Error('The Telegram update lease could not be completed.');
+      }
+    } catch (error: unknown) {
+      try {
+        await dependencies.inbox.markFailed(
+          dependencies.installationId,
+          normalized.updateId,
+          error instanceof Error ? error.name : 'UnknownError',
+        );
+      } catch {
+        // Preserve the original handler failure without logging sensitive details.
+      }
+      throw error;
+    }
+  });
 
   bot.on('my_chat_member', async (context) => {
     const chat = context.myChatMember.chat;

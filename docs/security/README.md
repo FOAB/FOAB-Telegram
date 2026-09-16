@@ -27,6 +27,7 @@ The current application validates its Telegram token/database URL, stores instal
 | Telegram updates, webhooks, and API errors | Invalid webhook secret, duplicate/out-of-order updates, unknown fields, retries, timeouts, and uncertain-effect fixtures. | Long-poll bootstrap exists; webhook and durable update processing are not implemented. |
 | Moderation and sanctions | Concurrent causes, protected targets, revoked rights, idempotency, delayed jobs, and privacy-safe feedback. | Not implemented or tested. |
 | PostgreSQL | Scoped repositories, constraints, parameterized SQL, migration rollback/recovery, concurrent worker claims, and least-privilege roles. | Initial schema/migration and installation-scoped repository verified locally; migration/runtime/test roles are separated. Rollback/recovery and worker claims remain unimplemented. |
+| Telegram update inbox | Metadata-only normalized receipts, installation scope, duplicate suppression, lease expiry, failure retry, and no raw update storage. | Implemented and verified locally with concurrent duplicate and retry tests. A transactional outbox and durable external-effect recovery remain unimplemented. |
 | Imports, files, and exports | Malformed/oversized inputs, path traversal, content type, formula injection, minimization, cancellation, and authorized scope. | Not implemented or tested. |
 | Runtime security and recovery | Rate limits, retention, backup/restore, clean install, operational diagnostics, and real-client capability checks. | Not implemented or tested. |
 

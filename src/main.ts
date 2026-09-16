@@ -2,6 +2,7 @@ import { loadRuntimeConfig } from './config/environment.js';
 import { createDatabase } from './db/database.js';
 import { ensureCurrentInstallation } from './db/installation-repository.js';
 import { GroupRepository } from './db/group-repository.js';
+import { UpdateInboxRepository } from './db/update-inbox-repository.js';
 import {
   groupAdministratorCommandMenu,
   groupCommandMenu,
@@ -49,6 +50,7 @@ async function main(): Promise<void> {
     const bot = createBot(config.telegramBotToken, {
       installationId,
       groups: new GroupRepository(database.db),
+      inbox: new UpdateInboxRepository(database.db),
     });
 
     bot.catch(({ ctx, error }) => {
