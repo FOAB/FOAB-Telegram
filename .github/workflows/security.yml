@@ -1,0 +1,62 @@
+name: CI and security checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "19 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application-checks:
+    name: Typecheck, tests, build, and dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Activate the pinned pnpm release
+        run: |
+          corepack enable pnpm
+          corepack prepare pnpm@11.22.0 --activate
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and test
+        run: pnpm check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Audit locked dependencies
+        run: pnpm audit --audit-level high
+
+  secrets:
+    name: Secret scan and synthetic self-test
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Scan working tree and Git history
+        shell: pwsh
+        run: ./scripts/security/Invoke-SecurityChecks.ps1 -SelfTest

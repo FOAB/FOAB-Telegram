@@ -1,1 +1,86 @@
-﻿docs/planning
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+.direnv/
+.npmrc
+!.npmrc.example
+.pgpass
+.netrc
+.pypirc
+*.secret
+*.secrets
+secrets/
+credentials/
+.aws/
+.azure/
+.gcloud/
+.kube/
+
+# Local tools, build output, dependencies, and caches
+.tools/
+node_modules/
+.pnpm-store/
+.turbo/
+.cache/
+coverage/
+dist/
+build/
+out/
+.next/
+.vite/
+*.tsbuildinfo
+
+# Local-language planning material; only publish English-reviewed product docs.
+docs/planning/
+
+# Local data, databases, uploads, exports, and backups
+data/
+storage/
+uploads/
+exports/
+backups/
+pgdata/
+postgres-data/
+.postgres/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Logs, diagnostics, and generated reports
+*.log
+*.log.*
+*.sarif
+*.har
+*.prof
+*.trace
+crash.*
+
+# Certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+
+# Operating system and editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.swp
+*.swo

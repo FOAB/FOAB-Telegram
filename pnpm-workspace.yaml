@@ -1,0 +1,4 @@
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+overrides:
+  '@types/node': 24.13.4
