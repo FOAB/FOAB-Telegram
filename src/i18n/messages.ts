@@ -6,6 +6,17 @@ export interface MessageCatalog {
   readonly privateStart: string;
   readonly groupStart: string;
   readonly help: string;
+  readonly ping: string;
+  readonly id: (chatId: string, userId: number) => string;
+  readonly settingsLanguageButton: string;
+  readonly settingsTimeZoneButton: string;
+  readonly settingsBackButton: string;
+  readonly settingsCloseButton: string;
+  readonly settingsWebAppButton: string;
+  readonly settingsLanguagePrompt: string;
+  readonly settingsTimeZonePrompt: string;
+  readonly localeName: (locale: SupportedLocale) => string;
+  readonly privateGroupButton: (index: number, title: string) => string;
   readonly administratorHelp: string;
   readonly privateSettings: string;
   readonly privateGroupsHeader: string;
@@ -29,7 +40,18 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     groupStart:
       'FOAB is ready in this group. Use /help to see the commands currently available.',
     help:
-      'Available commands:\n/start — Register this group and show setup guidance.\n/help — Show this help message.\n/cancel — Cancel your active FOAB flow.',
+      'Available commands:\n/start — Register this group and show setup guidance.\n/help — Show this help message.\n/ping — Check whether FOAB is online.\n/id — Show the current chat and user IDs.\n/cancel — Cancel your active FOAB flow.',
+    ping: 'FOAB is online.',
+    id: (chatId, userId) => `Chat ID: ${chatId}\nYour user ID: ${userId}`,
+    settingsLanguageButton: 'Language',
+    settingsTimeZoneButton: 'Time zone',
+    settingsBackButton: 'Back',
+    settingsCloseButton: 'Close',
+    settingsWebAppButton: 'Open settings app',
+    settingsLanguagePrompt: 'Choose the group language:',
+    settingsTimeZonePrompt: 'Choose a common time zone. Use the command form for another supported IANA zone.',
+    localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
+    privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
       "\nAdministrator commands:\n/settings — View or update this group's language and time zone.",
     privateSettings:
@@ -55,7 +77,18 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     groupStart:
       'O FOAB está pronto neste grupo. Use /help para ver os comandos disponíveis no momento.',
     help:
-      'Comandos disponíveis:\n/start — Registrar este grupo e mostrar orientações iniciais.\n/help — Mostrar esta ajuda.\n/cancel — Cancelar seu fluxo ativo do FOAB.',
+      'Comandos disponíveis:\n/start — Registrar este grupo e mostrar orientações iniciais.\n/help — Mostrar esta ajuda.\n/ping — Verificar se o FOAB está online.\n/id — Mostrar os IDs do chat e do usuário.\n/cancel — Cancelar seu fluxo ativo do FOAB.',
+    ping: 'O FOAB está online.',
+    id: (chatId, userId) => `ID do chat: ${chatId}\nSeu ID de usuário: ${userId}`,
+    settingsLanguageButton: 'Idioma',
+    settingsTimeZoneButton: 'Fuso horário',
+    settingsBackButton: 'Voltar',
+    settingsCloseButton: 'Fechar',
+    settingsWebAppButton: 'Abrir app de configurações',
+    settingsLanguagePrompt: 'Escolha o idioma do grupo:',
+    settingsTimeZonePrompt: 'Escolha um fuso horário comum. Use o comando para outro fuso IANA compatível.',
+    localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
+    privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
       '\nComandos de administrador:\n/settings — Ver ou atualizar o idioma e o fuso horário deste grupo.',
     privateSettings:
@@ -81,7 +114,18 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     groupStart:
       'FOAB está listo en este grupo. Usa /help para ver los comandos disponibles actualmente.',
     help:
-      'Comandos disponibles:\n/start — Registrar este grupo y mostrar instrucciones iniciales.\n/help — Mostrar esta ayuda.\n/cancel — Cancelar tu flujo activo de FOAB.',
+      'Comandos disponibles:\n/start — Registrar este grupo y mostrar instrucciones iniciales.\n/help — Mostrar esta ayuda.\n/ping — Comprobar si FOAB está en línea.\n/id — Mostrar los IDs del chat y del usuario.\n/cancel — Cancelar tu flujo activo de FOAB.',
+    ping: 'FOAB está en línea.',
+    id: (chatId, userId) => `ID del chat: ${chatId}\nTu ID de usuario: ${userId}`,
+    settingsLanguageButton: 'Idioma',
+    settingsTimeZoneButton: 'Zona horaria',
+    settingsBackButton: 'Volver',
+    settingsCloseButton: 'Cerrar',
+    settingsWebAppButton: 'Abrir app de ajustes',
+    settingsLanguagePrompt: 'Elige el idioma del grupo:',
+    settingsTimeZonePrompt: 'Elige una zona horaria común. Usa el comando para otra zona IANA compatible.',
+    localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
+    privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
       '\nComandos de administrador:\n/settings — Ver o actualizar el idioma y la zona horaria de este grupo.',
     privateSettings:

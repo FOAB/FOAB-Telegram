@@ -27,7 +27,7 @@ export type BotGroupStatus =
   | 'kicked';
 
 /** Supported update kinds entering the durable inbox. */
-export type TelegramUpdateKind = 'message' | 'my_chat_member';
+export type TelegramUpdateKind = 'message' | 'my_chat_member' | 'callback_query';
 
 /** Durable inbox processing states. Failed leases can be claimed again. */
 export type TelegramInboxStatus = 'processing' | 'processed' | 'failed';
@@ -120,7 +120,7 @@ export const telegramUpdateInbox = pgTable(
     }),
     check(
       'telegram_update_inbox_kind_check',
-      sql`${table.updateKind} IN ('message', 'my_chat_member')`,
+      sql`${table.updateKind} IN ('message', 'my_chat_member', 'callback_query')`,
     ),
     check(
       'telegram_update_inbox_status_check',

@@ -1,0 +1,2 @@
+ALTER TABLE "telegram_update_inbox" DROP CONSTRAINT "telegram_update_inbox_kind_check";--> statement-breakpoint
+ALTER TABLE "telegram_update_inbox" ADD CONSTRAINT "telegram_update_inbox_kind_check" CHECK ("telegram_update_inbox"."update_kind" IN ('message', 'my_chat_member', 'callback_query'));

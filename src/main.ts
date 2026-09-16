@@ -51,6 +51,7 @@ async function main(): Promise<void> {
       installationId,
       groups: new GroupRepository(database.db),
       inbox: new UpdateInboxRepository(database.db),
+      ...(config.webAppUrl === null ? {} : { webAppUrl: config.webAppUrl }),
     });
 
     bot.catch(({ ctx, error }) => {
@@ -85,7 +86,7 @@ async function main(): Promise<void> {
     }
 
     await bot.start({
-      allowed_updates: ['message', 'my_chat_member'],
+      allowed_updates: ['message', 'my_chat_member', 'callback_query'],
       onStart: (botInfo) => {
         writeLog('info', 'telegram_bot_started', { botId: botInfo.id });
       },

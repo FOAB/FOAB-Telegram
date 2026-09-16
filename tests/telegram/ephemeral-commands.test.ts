@@ -14,6 +14,8 @@ describe('private group command feedback', () => {
       true,
       true,
       true,
+      true,
+      true,
     ]);
     expect(
       privateCommandMenu.every(

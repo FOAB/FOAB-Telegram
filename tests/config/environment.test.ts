@@ -5,6 +5,8 @@ import {
   runtimeEnvironmentKeys,
 } from '../../src/config/environment.js';
 
+const embeddedCredentialUrl = ['https://user', ':', 'password', '@miniapp.example.invalid/foab'].join('');
+
 describe('runtime environment validation', () => {
   it('accepts a synthetic bot token without making a network request', () => {
     const config = loadRuntimeConfig({
@@ -15,7 +17,19 @@ describe('runtime environment validation', () => {
 
     expect(config.telegramBotToken).toBe('synthetic-token-value');
     expect(config.databaseUrl).toContain('/synthetic_db');
+    expect(config.webAppUrl).toBeNull();
     expect(Object.isFrozen(config)).toBe(true);
+  });
+
+  it('accepts an optional HTTPS Mini App URL without making a network request', () => {
+    const config = loadRuntimeConfig({
+      [runtimeEnvironmentKeys.telegramBotToken]: 'synthetic-token-value',
+      [runtimeEnvironmentKeys.databaseUrl]:
+        'postgresql://synthetic_user:synthetic_password@127.0.0.1:5432/synthetic_db',
+      [runtimeEnvironmentKeys.webAppUrl]: 'https://miniapp.example.invalid/foab',
+    });
+
+    expect(config.webAppUrl).toBe('https://miniapp.example.invalid/foab');
   });
 
   it.each([undefined, '', '   ', ' token-with-padding '])(
@@ -48,6 +62,24 @@ describe('runtime environment validation', () => {
       expect(error).toBeInstanceOf(ConfigurationError);
       expect(error.message).toContain(runtimeEnvironmentKeys.databaseUrl);
       expect(error.message).not.toContain('synthetic_password');
+    },
+  );
+
+  it.each(['http://miniapp.example.invalid/foab', embeddedCredentialUrl, 'https://miniapp.example.invalid/foab#fragment'])(
+    'rejects an unsafe optional Mini App URL without echoing it',
+    (webAppUrl) => {
+      const error = captureConfigurationError(() =>
+        loadRuntimeConfig({
+          [runtimeEnvironmentKeys.telegramBotToken]: 'synthetic-token-value',
+          [runtimeEnvironmentKeys.databaseUrl]:
+            'postgresql://synthetic_user:synthetic_password@127.0.0.1:5432/synthetic_db',
+          [runtimeEnvironmentKeys.webAppUrl]: webAppUrl,
+        }),
+      );
+
+      expect(error).toBeInstanceOf(ConfigurationError);
+      expect(error.message).toContain(runtimeEnvironmentKeys.webAppUrl);
+      expect(error.message).not.toContain(webAppUrl);
     },
   );
 });

@@ -1,5 +1,5 @@
 import { Bot, type Context } from 'grammy';
-import type { Message } from 'grammy/types';
+import type { InlineKeyboardMarkup, Message } from 'grammy/types';
 import type {
   GroupRecord,
   GroupRepository,
@@ -19,6 +19,8 @@ import {
 } from './authorization.js';
 import {
   parseSettingsArguments,
+  parseSettingsCallbackData,
+  type SettingsCallback,
   type SettingsCommand,
 } from './commands.js';
 import { ActiveFlowStore, type FlowKey } from './flow-state.js';
@@ -27,11 +29,18 @@ import {
   type PrivateSelectionKey,
 } from './private-selection.js';
 import { normalizeTelegramUpdate } from './update-normalizer.js';
+import {
+  privateGroupSelectionKeyboard,
+  settingsLanguageKeyboard,
+  settingsOverviewKeyboard,
+  settingsTimeZoneKeyboard,
+} from './settings-keyboard.js';
 
 /** Dependencies required by handlers that persist group scope. */
 export interface BotDependencies {
   readonly installationId: string;
   readonly groups: GroupRepository;
+  readonly webAppUrl?: string;
   readonly inbox?: UpdateInboxRepository;
   readonly flows?: ActiveFlowStore;
   readonly privateSelections?: PrivateGroupSelectionStore;
@@ -134,6 +143,53 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     );
   });
 
+  bot.command('ping', async (context) => {
+    const group = await observeCurrentGroup(context, dependencies);
+    const locale = group
+      ? supportedLocale(group.locale)
+      : localeFromTelegram(context.from?.language_code);
+    await replyToCommand(context, getMessages(locale).ping);
+  });
+
+  bot.command('id', async (context) => {
+    const group = await observeCurrentGroup(context, dependencies);
+    const sender = context.from;
+    const chat = context.chat;
+    if (!sender || !chat) {
+      return;
+    }
+    const locale = group
+      ? supportedLocale(group.locale)
+      : localeFromTelegram(sender.language_code);
+    await replyToCommand(context, getMessages(locale).id(String(chat.id), sender.id));
+  });
+
+  bot.on('callback_query:data', async (context) => {
+    const action = parseSettingsCallbackData(context.callbackQuery.data);
+    if (!action) {
+      await context.answerCallbackQuery();
+      return;
+    }
+
+    try {
+      const feedback = await handleSettingsCallback(
+        context,
+        dependencies,
+        flows,
+        privateSelections,
+        action,
+      );
+      await context.answerCallbackQuery(feedback ? { text: feedback } : undefined);
+    } catch (error: unknown) {
+      try {
+        await context.answerCallbackQuery();
+      } catch {
+        // Preserve the original handler failure without exposing callback data.
+      }
+      throw error;
+    }
+  });
+
   bot.command('settings', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
     const settingsCommand = parseSettingsArguments(
@@ -175,6 +231,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       await replyToCommand(
         context,
         messages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
+        settingsOverviewKeyboard(messages),
       );
       return;
     }
@@ -192,7 +249,12 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     }
 
     flows.cancel(key, 'settings');
-    await replyToCommand(context, getMessages(supportedLocale(updated.locale)).settingsUpdated);
+    const updatedMessages = getMessages(supportedLocale(updated.locale));
+    await replyToCommand(
+      context,
+      updatedMessages.settingsUpdated,
+      settingsOverviewKeyboard(updatedMessages),
+    );
   });
 
   bot.command('cancel', async (context) => {
@@ -237,7 +299,11 @@ export function ephemeralCommandReplyOptions(
 }
 
 /** Sends command feedback privately in groups and normally in private chats. */
-async function replyToCommand(context: Context, text: string): Promise<void> {
+async function replyToCommand(
+  context: Context,
+  text: string,
+  replyMarkup?: InlineKeyboardMarkup,
+): Promise<void> {
   const chat = context.chat;
   if (chat?.type === 'group' || chat?.type === 'supergroup') {
     const sender = context.from;
@@ -249,15 +315,21 @@ async function replyToCommand(context: Context, text: string): Promise<void> {
       return;
     }
 
-    await context.api.sendMessage(
-      chat.id,
-      text,
-      ephemeralCommandReplyOptions(message, sender.id),
-    );
+    const options = replyMarkup === undefined
+      ? ephemeralCommandReplyOptions(message, sender.id)
+      : {
+        ...ephemeralCommandReplyOptions(message, sender.id),
+        reply_markup: replyMarkup,
+      };
+    await context.api.sendMessage(chat.id, text, options);
     return;
   }
 
-  await context.reply(text);
+  if (replyMarkup === undefined) {
+    await context.reply(text);
+    return;
+  }
+  await context.reply(text, { reply_markup: replyMarkup });
 }
 
 /** Saves group metadata from a command without changing membership state. */
@@ -319,6 +391,14 @@ async function handlePrivateSettings(
     await replyToCommand(
       context,
       `${messages.privateGroupsHeader}\n${messages.privateGroupList(entries)}`,
+      privateGroupSelectionKeyboard(
+        messages,
+        administratorGroups.map((group, index) => ({
+          index: index + 1,
+          title: safeGroupTitle(group.title),
+        })),
+        dependencies.webAppUrl,
+      ),
     );
     return;
   }
@@ -344,6 +424,7 @@ async function handlePrivateSettings(
     await replyToCommand(
       context,
       groupMessages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
+      settingsOverviewKeyboard(groupMessages, dependencies.webAppUrl),
     );
     return;
   }
@@ -376,7 +457,260 @@ async function handlePrivateSettings(
   }
 
   selections.clear(key);
-  await replyToCommand(context, getMessages(supportedLocale(updated.locale)).settingsUpdated);
+  const updatedMessages = getMessages(supportedLocale(updated.locale));
+  await replyToCommand(
+    context,
+    updatedMessages.settingsUpdated,
+    settingsOverviewKeyboard(updatedMessages, dependencies.webAppUrl),
+  );
+}
+
+/** Handles one typed settings callback while rechecking the current target scope. */
+async function handleSettingsCallback(
+  context: Context,
+  dependencies: BotDependencies,
+  flows: ActiveFlowStore,
+  privateSelections: PrivateGroupSelectionStore,
+  action: SettingsCallback,
+): Promise<string | null> {
+  const sender = context.from;
+  const chat = context.chat;
+  if (!sender || sender.is_bot || !chat) {
+    return null;
+  }
+
+  if (chat.type === 'private') {
+    return handlePrivateSettingsCallback(
+      context,
+      dependencies,
+      privateSelections,
+      action,
+    );
+  }
+  if (chat.type === 'group' || chat.type === 'supergroup') {
+    return handleGroupSettingsCallback(context, dependencies, flows, action);
+  }
+  return null;
+}
+
+/** Handles buttons from a group ephemeral settings message. */
+async function handleGroupSettingsCallback(
+  context: Context,
+  dependencies: BotDependencies,
+  flows: ActiveFlowStore,
+  action: SettingsCallback,
+): Promise<string | null> {
+  const chat = context.chat;
+  const sender = context.from;
+  if (!chat || !sender || (chat.type !== 'group' && chat.type !== 'supergroup')) {
+    return null;
+  }
+  if (!Number.isSafeInteger(chat.id)) {
+    return null;
+  }
+
+  const group = await dependencies.groups.findByChatId(
+    dependencies.installationId,
+    BigInt(chat.id),
+  );
+  const messages = getMessages(supportedLocale(group?.locale));
+  if (!group || !group.isActive || !(await isCurrentGroupAdministrator(context))) {
+    await editSettingsMessage(context, messages.settingsNotAuthorized);
+    return messages.settingsNotAuthorized;
+  }
+
+  const key = getFlowKey(context, dependencies.installationId, group.telegramChatId);
+  if (!key) {
+    await editSettingsMessage(context, messages.settingsNotAuthorized);
+    return messages.settingsNotAuthorized;
+  }
+
+  if (action.kind === 'close') {
+    flows.cancel(key, 'settings');
+    await editSettingsMessage(context, messages.cancelCompleted);
+    return null;
+  }
+  if (action.kind === 'back') {
+    await editSettingsMessage(
+      context,
+      messages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
+      settingsOverviewKeyboard(messages),
+    );
+    return null;
+  }
+  if (action.kind === 'show-language') {
+    await editSettingsMessage(context, messages.settingsLanguagePrompt, settingsLanguageKeyboard(messages));
+    return null;
+  }
+  if (action.kind === 'show-time-zone') {
+    await editSettingsMessage(context, messages.settingsTimeZonePrompt, settingsTimeZoneKeyboard(messages));
+    return null;
+  }
+  if (action.kind === 'select-group') {
+    return null;
+  }
+  const updated = await dependencies.groups.updateSettings(
+    dependencies.installationId,
+    group.telegramChatId,
+    group.settingsRevision,
+    settingsUpdateFromCallback(action),
+  );
+  if (!updated) {
+    await editSettingsMessage(context, messages.settingsConflict, settingsOverviewKeyboard(messages));
+    return messages.settingsConflict;
+  }
+
+  flows.cancel(key, 'settings');
+  const updatedMessages = getMessages(supportedLocale(updated.locale));
+  await editSettingsMessage(
+    context,
+    updatedMessages.groupSettings(updated.locale, updated.timeZone, updated.settingsRevision),
+    settingsOverviewKeyboard(updatedMessages),
+  );
+  return updatedMessages.settingsUpdated;
+}
+
+/** Handles buttons from a private group list or selected-group settings message. */
+async function handlePrivateSettingsCallback(
+  context: Context,
+  dependencies: BotDependencies,
+  selections: PrivateGroupSelectionStore,
+  action: SettingsCallback,
+): Promise<string | null> {
+  const key = getPrivateSelectionKey(context, dependencies.installationId);
+  const sender = context.from;
+  const messages = getMessages(localeFromTelegram(sender?.language_code));
+  if (!key || !sender) {
+    await editSettingsMessage(context, messages.settingsNotAuthorized);
+    return messages.settingsNotAuthorized;
+  }
+
+  if (action.kind === 'select-group') {
+    const selectedGroupId = selections.select(key, action.index);
+    if (selectedGroupId === null) {
+      await editSettingsMessage(context, messages.privateSelectionExpired);
+      return messages.privateSelectionExpired;
+    }
+
+    const group = await dependencies.groups.findByChatId(
+      dependencies.installationId,
+      selectedGroupId,
+    );
+    if (!group || !group.isActive || !(await isGroupAdministrator(context.api, selectedGroupId, sender.id))) {
+      selections.clear(key);
+      await editSettingsMessage(context, messages.settingsNotAuthorized);
+      return messages.settingsNotAuthorized;
+    }
+
+    const groupMessages = getMessages(supportedLocale(group.locale));
+    await editSettingsMessage(
+      context,
+      groupMessages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
+      settingsOverviewKeyboard(groupMessages, dependencies.webAppUrl),
+    );
+    return null;
+  }
+
+  const selectedGroupId = selections.resolveSelected(key);
+  if (selectedGroupId === null) {
+    await editSettingsMessage(context, messages.privateSelectionUsage);
+    return messages.privateSelectionUsage;
+  }
+
+  const group = await dependencies.groups.findByChatId(
+    dependencies.installationId,
+    selectedGroupId,
+  );
+  if (!group || !group.isActive || !(await isGroupAdministrator(context.api, selectedGroupId, sender.id))) {
+    selections.clear(key);
+    await editSettingsMessage(context, messages.settingsNotAuthorized);
+    return messages.settingsNotAuthorized;
+  }
+
+  const groupMessages = getMessages(supportedLocale(group.locale));
+  if (action.kind === 'close') {
+    selections.clear(key);
+    await editSettingsMessage(context, groupMessages.cancelCompleted);
+    return null;
+  }
+  if (action.kind === 'back') {
+    await editSettingsMessage(
+      context,
+      groupMessages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
+      settingsOverviewKeyboard(groupMessages, dependencies.webAppUrl),
+    );
+    return null;
+  }
+  if (action.kind === 'show-language') {
+    await editSettingsMessage(
+      context,
+      groupMessages.settingsLanguagePrompt,
+      settingsLanguageKeyboard(groupMessages),
+    );
+    return null;
+  }
+  if (action.kind === 'show-time-zone') {
+    await editSettingsMessage(
+      context,
+      groupMessages.settingsTimeZonePrompt,
+      settingsTimeZoneKeyboard(groupMessages),
+    );
+    return null;
+  }
+  const updated = await dependencies.groups.updateSettings(
+    dependencies.installationId,
+    selectedGroupId,
+    group.settingsRevision,
+    settingsUpdateFromCallback(action),
+  );
+  if (!updated) {
+    await editSettingsMessage(context, groupMessages.settingsConflict, settingsOverviewKeyboard(groupMessages));
+    return groupMessages.settingsConflict;
+  }
+
+  const updatedMessages = getMessages(supportedLocale(updated.locale));
+  await editSettingsMessage(
+    context,
+    updatedMessages.groupSettings(updated.locale, updated.timeZone, updated.settingsRevision),
+    settingsOverviewKeyboard(updatedMessages, dependencies.webAppUrl),
+  );
+  return updatedMessages.settingsUpdated;
+}
+
+/** Edits the original private or group ephemeral settings message without public fallback. */
+async function editSettingsMessage(
+  context: Context,
+  text: string,
+  replyMarkup?: InlineKeyboardMarkup,
+): Promise<void> {
+  const message = context.msg;
+  const sender = context.from;
+  const chat = message?.chat;
+  if (!message || !sender || !chat) {
+    return;
+  }
+
+  const markup = replyMarkup ?? { inline_keyboard: [] };
+  if ((chat.type === 'group' || chat.type === 'supergroup') && message.ephemeral_message_id !== undefined) {
+    await context.api.editEphemeralMessageText(
+      chat.id,
+      sender.id,
+      message.ephemeral_message_id,
+      text,
+      { reply_markup: markup },
+    );
+    return;
+  }
+  if (chat.type === 'private' && message.message_id > 0) {
+    await context.api.editMessageText(chat.id, message.message_id, text, { reply_markup: markup });
+    return;
+  }
+  if (chat.type === 'group' || chat.type === 'supergroup') {
+    await context.api.sendMessage(chat.id, text, {
+      ephemeral_message_parameters: { receiver_user_id: sender.id },
+      reply_markup: markup,
+    });
+  }
 }
 
 /** Creates a private selection identity from the authenticated private update. */
@@ -431,6 +765,16 @@ function settingsUpdateFromCommand(
     return { locale: command.value } as const;
   }
   return { timeZone: command.value } as const;
+}
+
+/** Converts a typed keyboard setting action into the repository's allowlisted patch. */
+function settingsUpdateFromCallback(
+  action: Extract<SettingsCallback, { kind: 'set-locale' | 'set-time-zone' }>,
+): GroupSettingsUpdate {
+  if (action.kind === 'set-locale') {
+    return { locale: action.value } as const;
+  }
+  return { timeZone: action.value } as const;
 }
 
 /** Converts Telegram's current bot membership status into the persisted contract. */

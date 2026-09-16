@@ -4,7 +4,7 @@ This runbook turns the BotFather screens supplied for FOAB into explicit setup d
 
 ## Current stage
 
-The current runtime requires a valid bot token and a migrated local PostgreSQL database. On startup it publishes localized `/start`, `/help`, `/settings`, and `/cancel` menus with `setMyCommands`, then starts long polling. Group commands are marked ephemeral and their responses target only the requesting user; delivery is not guaranteed and must be verified in a supported client. The bot stores group metadata when Telegram reports a bot membership change or when someone invokes a command in a group. The settings handler checks current administrator status for the exact group before writing language or time-zone settings; no moderation is performed. The screenshots show Allow Groups enabled and Group Privacy enabled, which are sufficient for these initial command and membership updates.
+The current runtime requires a valid bot token and a migrated local PostgreSQL database. On startup it publishes localized `/start`, `/help`, `/ping`, `/id`, `/settings`, and `/cancel` menus with `setMyCommands`, then starts long polling. In private chats, the optional validated `FOAB_WEB_APP_URL` is shown as the primary settings entry point and inline buttons remain available as the fallback. Group commands are marked ephemeral and their responses target only the requesting user; private-chat responses are ordinary messages. Delivery is not guaranteed and must be verified in a supported client. The bot stores group metadata when Telegram reports a bot membership change or when someone invokes a command in a group. The settings handler checks current administrator status for the exact group before writing language or time-zone settings; `/ping` and `/id` are read-only; no moderation is performed. The screenshots show Allow Groups enabled and Group Privacy enabled, which are sufficient for these initial command and membership updates.
 
 The bot token and runtime database URL are in the local ignored `.env`; migration credentials are in `.env.database`, and the integration-test URL is in `.env.test`. Do not paste any of them into chat, logs, screenshots, tests, or commits. Startup and command-menu publication have not been tested against Telegram during the current implementation slice; no live group or moderation action was used.
 
@@ -29,7 +29,7 @@ The bot token and runtime database URL are in the local ignored `.env`; migratio
 | Login Widget / OpenID Connect | Not configured | No separate website login is planned for the initial Mini App. Telegram Mini App launch data must be validated server-side. Do not add a parallel login surface without a product need. |
 | Restrict bot usage | Off | Optional owner-managed access restriction, not a substitute for FOAB's group-scoped authorization. Keep off for a bot intended for multiple communities unless the operator deliberately chooses a private allowlist. |
 | Welcome image and profile description | Empty | Optional profile presentation. This is separate from per-group welcome messages and can be configured after product copy is approved. |
-| Commands | Not configured in the supplied screenshot | The application publishes localized private menus and ephemeral group menus for `/start`, `/help`, and `/cancel`, plus `/settings` in the administrator scope. Group responses target the invoking member and never fall back to a public reply if ephemeral delivery fails. The menu is discoverability only; `/settings` still rechecks the actor and target chat. |
+| Commands | Not configured in the supplied screenshot | The application publishes localized private menus and ephemeral group menus for `/start`, `/help`, `/ping`, `/id`, and `/cancel`, plus `/settings` in the administrator scope. Group responses target the invoking member and never fall back to a public reply if ephemeral delivery fails. The menu is discoverability only; `/settings` still rechecks the actor and target chat. |
 | Payment providers / Telegram Stars | Providers visible; no FOAB product configured | No payment setup is needed. Payments are an optional future product track, separate from core moderation. If digital goods or services are ever sold inside Telegram, use the current Telegram Stars requirements and implement transaction, delivery, support, and refund handling before activation. |
 
 ## Group privacy and message visibility
@@ -51,7 +51,7 @@ The relevant Telegram methods and scopes are documented in [`setMyCommands`](htt
 
 ## Mini App setup and origin protection
 
-When the React/Vite Mini App is implemented and deployed:
+The repository now has the signed `initData` verification boundary and optional URL gating. When the React/Vite Mini App HTTP API and UI are implemented and deployed:
 
 1. Use an HTTPS deployment with a stable, reviewed origin.
 2. Configure the BotFather Menu Button to that URL. Configure Main App/profile launch only if the project wants that additional entry point.

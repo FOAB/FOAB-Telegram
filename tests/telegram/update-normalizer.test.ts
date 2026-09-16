@@ -75,6 +75,47 @@ describe('Telegram update normalization', () => {
     });
   });
 
+  it('projects a callback query while preserving only bounded action metadata', () => {
+    const update = {
+      update_id: 9_000_000_012,
+      callback_query: {
+        id: 'synthetic-callback-001',
+        from: { id: 1_000_000_001, is_bot: false, first_name: 'Synthetic' },
+        chat_instance: 'synthetic-chat-instance',
+        data: 'foab:settings:language',
+        message: {
+          chat: {
+            id: -1_000_000_000_001,
+            title: 'Synthetic FOAB Community',
+            type: 'supergroup',
+          },
+          date: 1_800_000_000,
+          message_id: 0,
+          ephemeral_message_id: 7_000_000_002,
+        },
+      },
+    } satisfies Update;
+
+    expect(normalizeTelegramUpdate(update)).toEqual({
+      kind: 'callback_query',
+      updateId: 9_000_000_012,
+      callbackQueryId: 'synthetic-callback-001',
+      chat: {
+        id: -1_000_000_000_001n,
+        type: 'supergroup',
+        title: 'Synthetic FOAB Community',
+      },
+      messageId: 0,
+      sender: {
+        id: 1_000_000_001,
+        isBot: false,
+        languageCode: null,
+      },
+      data: 'foab:settings:language',
+      ephemeralMessageId: 7_000_000_002,
+    });
+  });
+
   it('rejects unsupported variants, unsafe IDs, and oversized text', () => {
     const oversized = {
       ...ephemeralMessageUpdate,

@@ -14,7 +14,7 @@ Implemented foundation:
 - PostgreSQL schema and reviewed Drizzle migration for installation identity and group metadata, with every group key/query scoped by installation.
 - Separate database migration and runtime roles; the runtime role has data access but no schema or cluster-administration privileges.
 - Automatic group registration from Telegram bot-membership updates and onboarding commands; removing the bot marks that group inactive.
-- Ephemeral group `/start`, `/help`, `/settings`, and `/cancel` commands and requester-only ephemeral responses; Telegram delivery and client support are not yet live-tested.
+- Ephemeral group `/start`, `/help`, `/ping`, `/id`, `/settings`, and `/cancel` commands and requester-only ephemeral responses; Telegram delivery and client support are not yet live-tested.
 - Initial en-US, pt-BR, and es-ES onboarding, help, and settings messages, with the group locale defaulting to en-US.
 - Current group-administrator checks for settings, installation/group-scoped settings writes, and optimistic settings revisions.
 - Private `/settings` group selection bound to the authenticated user and installation, with a fresh administrator check before each selected-group write.
@@ -29,7 +29,7 @@ Not implemented yet:
 - Broader administrator roles and authorization, plus all moderation or protection actions.
 - Transactional outbox delivery, jobs, audit records, and recovery workflows.
 - Moderation, automatic replies, admission/Guard, federations, or any other group feature.
-- The HTTP API, Mini App, deployment packaging, and the full three-language interface.
+- The Mini App interface and HTTP API routes, deployment packaging, and the full three-language interface.
 
 See the [feature checklist](docs/product/feature-checklist.md) for planned, implemented, and verified capabilities, and [implementation progress](docs/developer/progress.md) for current evidence and the next task. The [BotFather setup checklist](docs/developer/botfather-setup.md) records when owner-side configuration is and is not needed.
 
@@ -62,13 +62,13 @@ The following describes the product roadmap, not shipped commands. The [feature 
 | Joining and Guard | Join-request review, rules acceptance, CAPTCHA, admission requirements, raid controls, and a Guard quiz before admission where Telegram supports the required flow. Manual review is the fallback when a capability is unavailable. |
 | Cleanup and group operations | Message purge and scheduled deletion, service-message cleanup, topics, invite links, linked discussions/channels, staff reports, audit destinations, and permission health checks. |
 | Federations and shared lists | User-created federations, explicit group consent, federation roles, subscriptions, bans with provenance and expiry, review/appeal flows, and per-group delivery status. Cross-installation federation feeds are outside the initial design. |
-| Administration and portability | A Telegram Mini App, policy simulation, configuration history and presets, privacy controls, scoped export/import, and recovery guidance. Imports require validation and preview; they must not silently activate external ban lists. |
+| Administration and portability | A Telegram Mini App as the primary private administration surface, policy simulation, configuration history and presets, privacy controls, scoped export/import, and recovery guidance. Inline keyboards remain the in-chat fallback, especially in groups. Imports require validation and preview; they must not silently activate external ban lists. |
 | Community workflows | Topic-aware schedules, polls, reactions, events, bounded declarative workflows, and optional extensions for newer Telegram message and community capabilities when the required API, rights, and client behavior are verified. |
 | Optional payments | A separately gated extension for subscriptions or digital services. No payment configuration is required for FOAB's core features. Digital goods sold inside Telegram must follow the current [Telegram Stars requirements](https://core.telegram.org/bots/payments-stars), with payment confirmation, fulfillment, support, terms, and refunds implemented before activation. |
 
 ### Telegram API capabilities
 
-The project treats newer Telegram Bot API features as delivery or interaction capabilities that existing FOAB features may use—not as duplicate product modules. Initial ephemeral `/start` and `/help` handling is implemented for group chats. Delivery is not guaranteed and supported-client behavior still needs verification. Other planned examples include Guard admission queries, structured Rich Messages with a useful text fallback, disabled buttons, and selected community/reaction/poll flows.
+The project treats newer Telegram Bot API features as delivery or interaction capabilities that existing FOAB features may use—not as duplicate product modules. Initial ephemeral command handling is implemented for group chats, including `/start`, `/help`, `/ping`, `/id`, `/settings`, and `/cancel`. Private-chat replies remain ordinary messages. Delivery is not guaranteed and supported-client behavior still needs verification. Other planned examples include Guard admission queries, structured Rich Messages with a useful text fallback, disabled buttons, and selected community/reaction/poll flows.
 
 The compatibility record was checked against Bot API 10.3 and grammY 1.46.0 on September 16, 2026. Compile-time type contracts and synthetic fixtures confirm that the selected SDK exposes the documented API shapes; they do **not** prove real Telegram delivery, client rendering, permissions, or end-to-end behavior. See [Telegram compatibility and open verification gates](docs/compatibility/telegram-api.md).
 
@@ -90,7 +90,7 @@ Current safeguards include:
 - **Strict typing and dependency checks:** strict TypeScript checks the application contracts; the lockfile pins package versions and an age policy delays newly published dependencies. Type checking reduces certain coding mistakes but is not an authorization or security proof.
 - **Least privilege in CI:** repository permissions are read-only for the secret-scan workflow. The actual GitHub workflow result and repository settings such as branch protection must be verified on GitHub; YAML alone does not enforce them.
 
-Application safeguards still to implement and test include server-side authorization for the remaining mutations, feature-specific data access, federation consent, input/output allowlists, rate limits, safe durable job retries, audit redaction, retention/export/deletion rules, and Mini App authentication. The current settings path authorizes only the exact current group administrator and does not authorize moderation. Synthetic fixtures and local checks never authorize testing against third-party bots, groups, or production accounts.
+Application safeguards still to implement and test include server-side authorization for the remaining mutations, feature-specific data access, federation consent, input/output allowlists, rate limits, safe durable job retries, audit redaction, retention/export/deletion rules, and the Mini App HTTP session/API surface. The shared Mini App init-data signature verifier is implemented, but it does not by itself authorize a group action. The current settings path authorizes only the exact current group administrator and does not authorize moderation. Synthetic fixtures and local checks never authorize testing against third-party bots, groups, or production accounts.
 
 ## Technology
 
@@ -101,8 +101,8 @@ Application safeguards still to implement and test include server-side authoriza
 | Package manager | In use | pnpm 11.22.0 with a committed lockfile |
 | Tests | In use | Vitest 5 with synthetic fixtures; no real Telegram calls |
 | Database | Local schema and group registry in use | PostgreSQL 18 with Drizzle and reviewed SQL migrations |
-| HTTP API | Planned | Fastify with schema-validated contracts |
-| Administration UI | Planned | React, Vite, and TypeScript Telegram Mini App |
+| HTTP API | Foundation in progress | Fastify with schema-validated contracts; routes and sessions remain |
+| Administration UI | Foundation in progress | React, Vite, and TypeScript Telegram Mini App; UI remains to be built |
 | Durable background work | Planned | PostgreSQL-backed inbox, outbox, and scheduled jobs; Redis/Valkey is not required initially |
 
 The current database slice stores installation identity, group metadata, versioned group language/time-zone settings, and metadata-only update receipts. It does not store message bodies or perform moderation. The settings command checks current authority for the exact group before writing. The inbox lease prevents duplicate update handling; a transactional outbox is still required before durable external effects. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
@@ -135,7 +135,7 @@ Start the bot after the local databases are migrated:
 pnpm dev
 ```
 
-On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing the group's language or time zone. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
+On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing the group's language or time zone. In private chats, a configured `FOAB_WEB_APP_URL` is offered as the primary settings entry point and inline buttons remain available as the fallback. Groups use only requester-targeted ephemeral command responses and inline callback buttons. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
 
 ## Checks
 

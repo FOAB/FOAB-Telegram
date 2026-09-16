@@ -5,6 +5,8 @@ import type { SupportedLocale } from '../i18n/messages.js';
 export const privateCommandMenu = [
   { command: 'start', description: 'Start FOAB or get setup guidance' },
   { command: 'help', description: 'Show available commands' },
+  { command: 'ping', description: 'Check whether FOAB is online' },
+  { command: 'id', description: 'Show the current chat and user IDs' },
   { command: 'settings', description: 'Open group settings' },
   { command: 'cancel', description: 'Cancel the active flow' },
 ] satisfies readonly BotCommand[];
@@ -13,6 +15,8 @@ export const privateCommandMenu = [
 export const groupCommandMenu = [
   { command: 'start', description: 'Register this group', is_ephemeral: true },
   { command: 'help', description: 'Show available commands', is_ephemeral: true },
+  { command: 'ping', description: 'Check whether FOAB is online', is_ephemeral: true },
+  { command: 'id', description: 'Show current chat and user IDs', is_ephemeral: true },
   { command: 'cancel', description: 'Cancel your active flow', is_ephemeral: true },
 ] satisfies readonly BotCommand[];
 
@@ -46,17 +50,23 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
     privateCommands: [
       { command: 'start', description: 'Iniciar o FOAB ou obter orientações' },
       { command: 'help', description: 'Mostrar comandos disponíveis' },
+      { command: 'ping', description: 'Verificar se o FOAB está online' },
+      { command: 'id', description: 'Mostrar IDs do chat e do usuário' },
       { command: 'settings', description: 'Abrir configurações do grupo' },
       { command: 'cancel', description: 'Cancelar o fluxo ativo' },
     ],
     groupCommands: [
       { command: 'start', description: 'Registrar este grupo', is_ephemeral: true },
       { command: 'help', description: 'Mostrar comandos disponíveis', is_ephemeral: true },
+      { command: 'ping', description: 'Verificar se o FOAB está online', is_ephemeral: true },
+      { command: 'id', description: 'Mostrar IDs do chat e do usuário', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar seu fluxo ativo', is_ephemeral: true },
     ],
     groupAdministratorCommands: [
       { command: 'start', description: 'Registrar este grupo', is_ephemeral: true },
       { command: 'help', description: 'Mostrar comandos disponíveis', is_ephemeral: true },
+      { command: 'ping', description: 'Verificar se o FOAB está online', is_ephemeral: true },
+      { command: 'id', description: 'Mostrar IDs do chat e do usuário', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar seu fluxo ativo', is_ephemeral: true },
       { command: 'settings', description: 'Abrir configurações do grupo', is_ephemeral: true },
     ],
@@ -67,17 +77,23 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
     privateCommands: [
       { command: 'start', description: 'Iniciar FOAB u obtener ayuda' },
       { command: 'help', description: 'Mostrar comandos disponibles' },
+      { command: 'ping', description: 'Comprobar si FOAB está en línea' },
+      { command: 'id', description: 'Mostrar IDs del chat y del usuario' },
       { command: 'settings', description: 'Abrir ajustes del grupo' },
       { command: 'cancel', description: 'Cancelar el flujo activo' },
     ],
     groupCommands: [
       { command: 'start', description: 'Registrar este grupo', is_ephemeral: true },
       { command: 'help', description: 'Mostrar comandos disponibles', is_ephemeral: true },
+      { command: 'ping', description: 'Comprobar si FOAB está en línea', is_ephemeral: true },
+      { command: 'id', description: 'Mostrar IDs del chat y del usuario', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar tu flujo activo', is_ephemeral: true },
     ],
     groupAdministratorCommands: [
       { command: 'start', description: 'Registrar este grupo', is_ephemeral: true },
       { command: 'help', description: 'Mostrar comandos disponibles', is_ephemeral: true },
+      { command: 'ping', description: 'Comprobar si FOAB está en línea', is_ephemeral: true },
+      { command: 'id', description: 'Mostrar IDs del chat y del usuario', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar tu flujo activo', is_ephemeral: true },
       { command: 'settings', description: 'Abrir ajustes del grupo', is_ephemeral: true },
     ],
@@ -91,6 +107,72 @@ export type SettingsCommand =
   | { readonly kind: 'set-locale'; readonly value: SupportedLocale }
   | { readonly kind: 'set-time-zone'; readonly value: string }
   | { readonly kind: 'invalid' };
+
+/** Closed callback actions emitted by FOAB's settings keyboards. */
+export type SettingsCallback =
+  | { readonly kind: 'select-group'; readonly index: number }
+  | { readonly kind: 'show-language' }
+  | { readonly kind: 'show-time-zone' }
+  | { readonly kind: 'set-locale'; readonly value: SupportedLocale }
+  | { readonly kind: 'set-time-zone'; readonly value: string }
+  | { readonly kind: 'back' }
+  | { readonly kind: 'close' };
+
+/** Encodes a typed settings action into a bounded callback payload. */
+export function settingsCallbackData(action: SettingsCallback): string {
+  switch (action.kind) {
+    case 'select-group':
+      return `foab:settings:group:${action.index}`;
+    case 'show-language':
+      return 'foab:settings:language';
+    case 'show-time-zone':
+      return 'foab:settings:timezone';
+    case 'set-locale':
+      return `foab:settings:locale:${action.value}`;
+    case 'set-time-zone':
+      return `foab:settings:time-zone:${action.value}`;
+    case 'back':
+      return 'foab:settings:back';
+    case 'close':
+      return 'foab:settings:close';
+  }
+}
+
+/** Parses only callback payloads created by the settings keyboard builder. */
+export function parseSettingsCallbackData(input: string): SettingsCallback | null {
+  if (input === 'foab:settings:language') {
+    return { kind: 'show-language' };
+  }
+  if (input === 'foab:settings:timezone') {
+    return { kind: 'show-time-zone' };
+  }
+  if (input === 'foab:settings:back') {
+    return { kind: 'back' };
+  }
+  if (input === 'foab:settings:close') {
+    return { kind: 'close' };
+  }
+
+  const [prefix, settings, action, value, ...rest] = input.split(':');
+  if (prefix !== 'foab' || settings !== 'settings' || rest.length > 0 || !value) {
+    return null;
+  }
+
+  if (action === 'group') {
+    const index = Number(value);
+    return isSelectionIndex(value, index)
+      ? { kind: 'select-group', index }
+      : null;
+  }
+  if (action === 'locale') {
+    const locale = parseSupportedLocale(value);
+    return locale ? { kind: 'set-locale', value: locale } : null;
+  }
+  if (action === 'time-zone' && isSupportedTimeZone(value)) {
+    return { kind: 'set-time-zone', value };
+  }
+  return null;
+}
 
 /** Parses `/settings` arguments without evaluating or forwarding administrator input. */
 export function parseSettingsArguments(input: string): SettingsCommand {

@@ -41,10 +41,23 @@ export interface NormalizedBotMembershipUpdate {
   readonly isActive: boolean;
 }
 
+/** Safe callback metadata used by interactive keyboards. */
+export interface NormalizedCallbackQueryUpdate {
+  readonly kind: 'callback_query';
+  readonly updateId: number;
+  readonly callbackQueryId: string;
+  readonly chat: NormalizedChat;
+  readonly messageId: number;
+  readonly sender: NormalizedSender;
+  readonly data: string;
+  readonly ephemeralMessageId: number | null;
+}
+
 /** Union of update shapes that the current application is prepared to process. */
 export type NormalizedTelegramUpdate =
   | NormalizedMessageUpdate
-  | NormalizedBotMembershipUpdate;
+  | NormalizedBotMembershipUpdate
+  | NormalizedCallbackQueryUpdate;
 
 /**
  * Validates and projects the supported Telegram update variants into a small
@@ -56,7 +69,7 @@ export function normalizeTelegramUpdate(update: Update): NormalizedTelegramUpdat
     return null;
   }
 
-  const allowedTopLevelKeys = new Set(['update_id', 'message', 'my_chat_member']);
+  const allowedTopLevelKeys = new Set(['update_id', 'message', 'my_chat_member', 'callback_query']);
   if (Object.keys(update).some((key) => !allowedTopLevelKeys.has(key))) {
     return null;
   }
@@ -64,6 +77,7 @@ export function normalizeTelegramUpdate(update: Update): NormalizedTelegramUpdat
   const presentVariants = [
     update.message !== undefined,
     update.my_chat_member !== undefined,
+    update.callback_query !== undefined,
   ].filter(Boolean).length;
   if (presentVariants !== 1) {
     return null;
@@ -74,6 +88,9 @@ export function normalizeTelegramUpdate(update: Update): NormalizedTelegramUpdat
   }
   if (update.my_chat_member !== undefined) {
     return normalizeBotMembership(update.update_id, update.my_chat_member);
+  }
+  if (update.callback_query !== undefined) {
+    return normalizeCallbackQuery(update.update_id, update.callback_query);
   }
   return null;
 }
@@ -131,6 +148,37 @@ function normalizeBotMembership(
     actor,
     botStatus: status,
     isActive,
+  };
+}
+
+/** Projects a callback query only when it belongs to a concrete private/group message. */
+function normalizeCallbackQuery(
+  updateId: number,
+  callbackQuery: NonNullable<Update['callback_query']>,
+): NormalizedCallbackQueryUpdate | null {
+  const message = callbackQuery.message;
+  const sender = normalizeSender(callbackQuery.from);
+  const data = callbackQuery.data;
+  if (!message || !sender || !isSafeCallbackQueryId(callbackQuery.id) || !isSafeCallbackData(data)) {
+    return null;
+  }
+
+  const chat = normalizeChat(message.chat);
+  const messageId = safeNonNegativeInteger(message.message_id);
+  const ephemeralMessageId = safePositiveInteger(message.ephemeral_message_id);
+  if (!chat || messageId === null || (messageId === 0 && ephemeralMessageId === null)) {
+    return null;
+  }
+
+  return {
+    kind: 'callback_query',
+    updateId,
+    callbackQueryId: callbackQuery.id,
+    chat,
+    messageId,
+    sender,
+    data,
+    ephemeralMessageId,
   };
 }
 
@@ -192,6 +240,21 @@ function safeTelegramChatId(value: number): bigint | null {
 /** Accepts a positive exact Telegram identifier. */
 function safePositiveInteger(value: number | undefined): number | null {
   return value !== undefined && isSafeInteger(value) && value > 0 ? value : null;
+}
+
+/** Accepts zero for ephemeral Telegram message placeholders while preserving integer safety. */
+function safeNonNegativeInteger(value: number | undefined): number | null {
+  return value !== undefined && isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+/** Keeps callback identifiers opaque while preventing unbounded values from entering the boundary. */
+function isSafeCallbackQueryId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 256;
+}
+
+/** Enforces Telegram's 1-64-byte callback-data contract before parsing any action. */
+function isSafeCallbackData(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && new TextEncoder().encode(value).length <= 64;
 }
 
 /** Avoids accepting non-numeric values at the runtime boundary. */
