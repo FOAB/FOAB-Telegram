@@ -1,6 +1,10 @@
 import { Bot, type Context } from 'grammy';
 import type { Message } from 'grammy/types';
-import type { GroupRepository } from '../db/group-repository.js';
+import type {
+  GroupRecord,
+  GroupRepository,
+  GroupSettingsUpdate,
+} from '../db/group-repository.js';
 import type { BotGroupStatus } from '../db/schema.js';
 import {
   getHelpMessage,
@@ -8,18 +12,26 @@ import {
   localeFromTelegram,
   supportedLocale,
 } from '../i18n/messages.js';
-import { isCurrentGroupAdministrator } from './authorization.js';
+import {
+  isCurrentGroupAdministrator,
+  isGroupAdministrator,
+} from './authorization.js';
 import {
   parseSettingsArguments,
   type SettingsCommand,
 } from './commands.js';
 import { ActiveFlowStore, type FlowKey } from './flow-state.js';
+import {
+  PrivateGroupSelectionStore,
+  type PrivateSelectionKey,
+} from './private-selection.js';
 
 /** Dependencies required by handlers that persist group scope. */
 export interface BotDependencies {
   readonly installationId: string;
   readonly groups: GroupRepository;
   readonly flows?: ActiveFlowStore;
+  readonly privateSelections?: PrivateGroupSelectionStore;
 }
 
 /**
@@ -32,6 +44,7 @@ export interface BotDependencies {
 export function createBot(token: string, dependencies: BotDependencies): Bot<Context> {
   const bot = new Bot(token);
   const flows = dependencies.flows ?? new ActiveFlowStore();
+  const privateSelections = dependencies.privateSelections ?? new PrivateGroupSelectionStore();
 
   bot.on('my_chat_member', async (context) => {
     const chat = context.myChatMember.chat;
@@ -70,18 +83,30 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       ? supportedLocale(group.locale)
       : localeFromTelegram(context.from?.language_code);
     const administrator = group ? await isCurrentGroupAdministrator(context) : false;
-    await replyToCommand(context, getHelpMessage(locale, administrator));
+    await replyToCommand(
+      context,
+      getHelpMessage(locale, administrator, context.chat?.type === 'private'),
+    );
   });
 
   bot.command('settings', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
+    const settingsCommand = parseSettingsArguments(
+      typeof context.match === 'string' ? context.match : '',
+    );
     const locale = group
       ? supportedLocale(group.locale)
       : localeFromTelegram(context.from?.language_code);
     const messages = getMessages(locale);
 
     if (!group) {
-      await replyToCommand(context, messages.privateSettings);
+      await handlePrivateSettings(
+        context,
+        dependencies,
+        privateSelections,
+        settingsCommand,
+        messages,
+      );
       return;
     }
     if (!group.isActive || !(await isCurrentGroupAdministrator(context))) {
@@ -89,10 +114,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       return;
     }
 
-    const settingsCommand = parseSettingsArguments(
-      typeof context.match === 'string' ? context.match : '',
-    );
-    if (settingsCommand.kind === 'invalid') {
+    if (settingsCommand.kind === 'invalid' || settingsCommand.kind === 'select-group') {
       await replyToCommand(context, messages.settingsUsage);
       return;
     }
@@ -133,8 +155,18 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     const locale = group
       ? supportedLocale(group.locale)
       : localeFromTelegram(context.from?.language_code);
-    const key = getFlowKey(context, dependencies.installationId, group?.telegramChatId);
     const messages = getMessages(locale);
+    if (!group && context.chat?.type === 'private') {
+      const key = getPrivateSelectionKey(context, dependencies.installationId);
+      await replyToCommand(
+        context,
+        key && privateSelections.clear(key)
+          ? messages.cancelCompleted
+          : messages.cancelNoActiveFlow,
+      );
+      return;
+    }
+    const key = getFlowKey(context, dependencies.installationId, group?.telegramChatId);
     await replyToCommand(
       context,
       key && flows.cancel(key, 'settings')
@@ -201,6 +233,129 @@ async function observeCurrentGroup(
   });
 }
 
+/** Handles private group discovery and updates with normal private-chat replies. */
+async function handlePrivateSettings(
+  context: Context,
+  dependencies: BotDependencies,
+  selections: PrivateGroupSelectionStore,
+  command: SettingsCommand,
+  messages: ReturnType<typeof getMessages>,
+): Promise<void> {
+  const key = getPrivateSelectionKey(context, dependencies.installationId);
+  const sender = context.from;
+  if (!key || !sender) {
+    await replyToCommand(context, messages.privateSettings);
+    return;
+  }
+  if (command.kind === 'invalid') {
+    await replyToCommand(context, messages.privateSettings);
+    return;
+  }
+
+  if (command.kind === 'show') {
+    const activeGroups = await dependencies.groups.listActive(dependencies.installationId, 25);
+    const administratorGroups: GroupRecord[] = [];
+    for (const group of activeGroups) {
+      if (await isGroupAdministrator(context.api, group.telegramChatId, sender.id)) {
+        administratorGroups.push(group);
+      }
+    }
+
+    if (administratorGroups.length === 0) {
+      selections.clear(key);
+      await replyToCommand(context, messages.privateGroupsEmpty);
+      return;
+    }
+
+    selections.set(key, administratorGroups.map((group) => group.telegramChatId));
+    const entries = administratorGroups.map(
+      (group, index) => `${index + 1}. ${safeGroupTitle(group.title)}`,
+    );
+    await replyToCommand(
+      context,
+      `${messages.privateGroupsHeader}\n${messages.privateGroupList(entries)}`,
+    );
+    return;
+  }
+
+  if (command.kind === 'select-group') {
+    const selectedGroupId = selections.select(key, command.index);
+    if (selectedGroupId === null) {
+      await replyToCommand(context, messages.privateSelectionExpired);
+      return;
+    }
+
+    const group = await dependencies.groups.findByChatId(
+      dependencies.installationId,
+      selectedGroupId,
+    );
+    if (!group || !group.isActive || !(await isGroupAdministrator(context.api, selectedGroupId, sender.id))) {
+      selections.clear(key);
+      await replyToCommand(context, messages.settingsNotAuthorized);
+      return;
+    }
+
+    const groupMessages = getMessages(supportedLocale(group.locale));
+    await replyToCommand(
+      context,
+      groupMessages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
+    );
+    return;
+  }
+
+  const selectedGroupId = selections.resolveSelected(key);
+  if (selectedGroupId === null) {
+    await replyToCommand(context, messages.privateSelectionUsage);
+    return;
+  }
+
+  const group = await dependencies.groups.findByChatId(
+    dependencies.installationId,
+    selectedGroupId,
+  );
+  if (!group || !group.isActive || !(await isGroupAdministrator(context.api, selectedGroupId, sender.id))) {
+    selections.clear(key);
+    await replyToCommand(context, messages.settingsNotAuthorized);
+    return;
+  }
+
+  const updated = await dependencies.groups.updateSettings(
+    dependencies.installationId,
+    selectedGroupId,
+    group.settingsRevision,
+    settingsUpdateFromCommand(command),
+  );
+  if (!updated) {
+    await replyToCommand(context, messages.settingsConflict);
+    return;
+  }
+
+  selections.clear(key);
+  await replyToCommand(context, getMessages(supportedLocale(updated.locale)).settingsUpdated);
+}
+
+/** Creates a private selection identity from the authenticated private update. */
+function getPrivateSelectionKey(
+  context: Context,
+  installationId: string,
+): PrivateSelectionKey | null {
+  const chat = context.chat;
+  const sender = context.from;
+  if (!chat || chat.type !== 'private' || !sender || sender.is_bot) {
+    return null;
+  }
+  return {
+    installationId,
+    privateChatId: chat.id,
+    userId: sender.id,
+  };
+}
+
+/** Keeps an observed Telegram title on one plain line before private display. */
+function safeGroupTitle(title: string): string {
+  return title.replace(/\s+/gu, ' ').trim().slice(0, 255);
+}
+
 /** Creates a cancellation identity from the authenticated update scope. */
 function getFlowKey(
   context: Context,
@@ -224,7 +379,9 @@ function getFlowKey(
 }
 
 /** Converts the parser's closed union into the repository's allowlisted patch. */
-function settingsUpdateFromCommand(command: Exclude<SettingsCommand, { kind: 'show' | 'invalid' }>) {
+function settingsUpdateFromCommand(
+  command: Extract<SettingsCommand, { kind: 'set-locale' | 'set-time-zone' }>,
+): GroupSettingsUpdate {
   if (command.kind === 'set-locale') {
     return { locale: command.value } as const;
   }

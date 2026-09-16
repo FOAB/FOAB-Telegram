@@ -8,6 +8,11 @@ export interface MessageCatalog {
   readonly help: string;
   readonly administratorHelp: string;
   readonly privateSettings: string;
+  readonly privateGroupsHeader: string;
+  readonly privateGroupsEmpty: string;
+  readonly privateGroupList: (entries: readonly string[]) => string;
+  readonly privateSelectionUsage: string;
+  readonly privateSelectionExpired: string;
   readonly groupSettings: (locale: string, timeZone: string, revision: number) => string;
   readonly settingsUsage: string;
   readonly settingsUpdated: string;
@@ -28,7 +33,12 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     administratorHelp:
       "\nAdministrator commands:\n/settings — View or update this group's language and time zone.",
     privateSettings:
-      'Open /settings in the target group. FOAB accepts `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES`, or `/settings timezone Area/Location`.',
+      'Use /settings to list groups where your administrator status is confirmed. Then use /settings select <number> and update the selected group with `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES`, or `/settings timezone Area/Location`.',
+    privateGroupsHeader: 'Groups where you are a current administrator:',
+    privateGroupsEmpty: 'No active group was found where your current administrator status could be confirmed.',
+    privateGroupList: (entries) => `Choose a group with /settings select <number>:\n${entries.join('\n')}`,
+    privateSelectionUsage: 'Run /settings first in this private chat, then use /settings select <number>. The selection expires after 10 minutes.',
+    privateSelectionExpired: 'That group selection is missing or expired. Run /settings to load the current administrator groups again.',
     groupSettings: (locale, timeZone, revision) =>
       `Group settings (revision ${revision}):\nLanguage: ${locale}\nTime zone: ${timeZone}\n\nUse /settings language <en-US|pt-BR|es-ES> or /settings timezone <IANA zone> to update them. Use /cancel to close this settings flow.`,
     settingsUsage:
@@ -49,7 +59,12 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     administratorHelp:
       '\nComandos de administrador:\n/settings — Ver ou atualizar o idioma e o fuso horário deste grupo.',
     privateSettings:
-      'Abra /settings no grupo desejado. O FOAB aceita `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES` ou `/settings timezone Area/Location`.',
+      'Use /settings para listar grupos onde seu status de administrador foi confirmado. Depois use /settings select <número> e atualize o grupo selecionado com `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES` ou `/settings timezone Area/Location`.',
+    privateGroupsHeader: 'Grupos onde seu status atual de administrador foi confirmado:',
+    privateGroupsEmpty: 'Não foi encontrado um grupo ativo onde seu status atual de administrador pudesse ser confirmado.',
+    privateGroupList: (entries) => `Escolha um grupo com /settings select <número>:\n${entries.join('\n')}`,
+    privateSelectionUsage: 'Execute /settings primeiro nesta conversa privada e depois use /settings select <número>. A seleção expira em 10 minutos.',
+    privateSelectionExpired: 'Essa seleção de grupo não existe ou expirou. Execute /settings para carregar novamente os grupos administrados por você.',
     groupSettings: (locale, timeZone, revision) =>
       `Configurações do grupo (revisão ${revision}):\nIdioma: ${locale}\nFuso horário: ${timeZone}\n\nUse /settings language <en-US|pt-BR|es-ES> ou /settings timezone <fuso IANA> para atualizar. Use /cancel para fechar este fluxo de configurações.`,
     settingsUsage:
@@ -70,7 +85,12 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     administratorHelp:
       '\nComandos de administrador:\n/settings — Ver o actualizar el idioma y la zona horaria de este grupo.',
     privateSettings:
-      'Abre /settings en el grupo elegido. FOAB acepta `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES` o `/settings timezone Area/Location`.',
+      'Usa /settings para listar grupos donde se confirmó tu estado de administrador. Después usa /settings select <número> y actualiza el grupo elegido con `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES` o `/settings timezone Area/Location`.',
+    privateGroupsHeader: 'Grupos donde se confirmó tu estado actual de administrador:',
+    privateGroupsEmpty: 'No se encontró un grupo activo donde se pudiera confirmar tu estado actual de administrador.',
+    privateGroupList: (entries) => `Elige un grupo con /settings select <número>:\n${entries.join('\n')}`,
+    privateSelectionUsage: 'Ejecuta /settings primero en este chat privado y después usa /settings select <número>. La selección caduca en 10 minutos.',
+    privateSelectionExpired: 'Esa selección de grupo no existe o caducó. Ejecuta /settings para cargar de nuevo los grupos que administras.',
     groupSettings: (locale, timeZone, revision) =>
       `Ajustes del grupo (revisión ${revision}):\nIdioma: ${locale}\nZona horaria: ${timeZone}\n\nUsa /settings language <en-US|pt-BR|es-ES> o /settings timezone <zona IANA> para actualizar. Usa /cancel para cerrar este flujo de ajustes.`,
     settingsUsage:
@@ -89,8 +109,15 @@ export function getMessages(locale: SupportedLocale): MessageCatalog {
 }
 
 /** Builds help for the caller's current scope and authority. */
-export function getHelpMessage(locale: SupportedLocale, isAdministrator: boolean): string {
+export function getHelpMessage(
+  locale: SupportedLocale,
+  isAdministrator: boolean,
+  isPrivateChat = false,
+): string {
   const messages = getMessages(locale);
+  if (isPrivateChat) {
+    return `${messages.help}\n\n${messages.privateSettings}`;
+  }
   return isAdministrator ? `${messages.help}${messages.administratorHelp}` : messages.help;
 }
 

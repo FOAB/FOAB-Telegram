@@ -15,7 +15,7 @@ This ledger tracks implemented repository controls separately from application p
 
 ## Application security evidence ledger
 
-The current application validates its Telegram token/database URL, stores installation-scoped group metadata, and provides initial `/start` and `/help` handlers. It does not authorize group administrators or administer groups. The controls below are required for the corresponding features; do not infer their implementation from the repository baseline.
+The current application validates its Telegram token/database URL, stores installation-scoped group metadata and settings, and provides localized onboarding/help/settings handlers. The settings path authorizes the current administrator for the exact group; broader group administration is not implemented. The controls below are required for the corresponding features; do not infer their implementation from the repository baseline.
 
 | Control area | Required proof when implemented | Status |
 |---|---|---|

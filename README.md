@@ -17,6 +17,7 @@ Implemented foundation:
 - Ephemeral group `/start`, `/help`, `/settings`, and `/cancel` commands and requester-only ephemeral responses; Telegram delivery and client support are not yet live-tested.
 - Initial en-US, pt-BR, and es-ES onboarding, help, and settings messages, with the group locale defaulting to en-US.
 - Current group-administrator checks for settings, installation/group-scoped settings writes, and optimistic settings revisions.
+- Private `/settings` group selection bound to the authenticated user and installation, with a fresh administrator check before each selected-group write.
 - A repeatable local PostgreSQL provisioner and synthetic integration tests for concurrent startup and cross-installation isolation.
 - Strict TypeScript compiler settings and synthetic unit tests.
 - A dated Telegram Bot API and SDK compatibility record with compile-time contracts and synthetic fixtures.

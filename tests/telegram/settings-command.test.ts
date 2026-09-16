@@ -25,6 +25,10 @@ describe('settings command contract', () => {
       kind: 'set-time-zone',
       value: 'UTC',
     });
+    expect(parseSettingsArguments('select 2')).toEqual({
+      kind: 'select-group',
+      index: 2,
+    });
   });
 
   it('rejects unknown fields, invalid values, and extra arguments', () => {
@@ -35,6 +39,9 @@ describe('settings command contract', () => {
     expect(parseSettingsArguments('timezone America/Sao_Paulo\nunsafe')).toEqual({
       kind: 'invalid',
     });
+    expect(parseSettingsArguments('select 0')).toEqual({ kind: 'invalid' });
+    expect(parseSettingsArguments('select 101')).toEqual({ kind: 'invalid' });
+    expect(parseSettingsArguments('select 1.0')).toEqual({ kind: 'invalid' });
   });
 
   it('keeps settings visible to private chats and group administrators only', () => {

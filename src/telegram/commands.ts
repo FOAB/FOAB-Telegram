@@ -87,6 +87,7 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
 /** Typed settings command variants accepted by the closed command grammar. */
 export type SettingsCommand =
   | { readonly kind: 'show' }
+  | { readonly kind: 'select-group'; readonly index: number }
   | { readonly kind: 'set-locale'; readonly value: SupportedLocale }
   | { readonly kind: 'set-time-zone'; readonly value: string }
   | { readonly kind: 'invalid' };
@@ -104,6 +105,13 @@ export function parseSettingsArguments(input: string): SettingsCommand {
   const [name, value] = parts;
   if (!name || !value || value.length > 64) {
     return { kind: 'invalid' };
+  }
+
+  if (name === 'select' || name === 'group') {
+    const index = Number(value);
+    return isSelectionIndex(value, index)
+      ? { kind: 'select-group', index }
+      : { kind: 'invalid' };
   }
 
   if (name === 'language' || name === 'locale') {
@@ -152,6 +160,19 @@ function isSupportedTimeZone(value: string): boolean {
 function isSafeTimeZoneCharacters(value: string): boolean {
   for (const character of value) {
     if (!/[A-Za-z0-9_+\-./]/u.test(character)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Accepts only a bounded one-based decimal selector for server-owned lists. */
+function isSelectionIndex(value: string, parsed: number): boolean {
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > 100 || value.length > 3) {
+    return false;
+  }
+  for (const character of value) {
+    if (character < '0' || character > '9') {
       return false;
     }
   }
