@@ -36,7 +36,7 @@ import {
   settingsTimeZoneKeyboard,
 } from './settings-keyboard.js';
 
-/** Dependencies required by handlers that persist group scope. */
+/** Safe update variants emitted by the bot's operational telemetry. */
 export type BotUpdateKind = 'message' | 'my_chat_member' | 'callback_query';
 
 /** Chat categories that may appear in an operational event without chat identity. */
@@ -85,16 +85,18 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
 
   bot.use(async (context, next) => {
     const receivedUpdateKind = telegramUpdateKind(context.update);
+    const receivedChatType = botChatType(context.chat);
+    const receivedFields: BotLogFields = {
+      ...(receivedUpdateKind === null ? {} : { updateKind: receivedUpdateKind }),
+      ...(receivedChatType === null ? {} : { chatType: receivedChatType }),
+    };
     dependencies.logger?.info(
       'telegram_update_received',
-      receivedUpdateKind === null ? {} : { updateKind: receivedUpdateKind },
+      receivedFields,
     );
     const normalized = normalizeTelegramUpdate(context.update);
     if (!normalized) {
-      dependencies.logger?.info(
-        'telegram_update_ignored',
-        receivedUpdateKind === null ? {} : { updateKind: receivedUpdateKind },
-      );
+      dependencies.logger?.info('telegram_update_ignored', receivedFields);
       return;
     }
     if (!dependencies.inbox) {
