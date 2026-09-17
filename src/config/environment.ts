@@ -49,6 +49,11 @@ export interface ConfigurationDiagnostics {
   readonly hasWhitespace: boolean;
   readonly hasNonAsciiCharacters: boolean;
   readonly hasBackslash: boolean;
+  readonly hasPercentCharacter: boolean;
+  readonly hasInvalidUrlPunctuation: boolean;
+  readonly hasAuthorityColon: boolean;
+  readonly hasNonNumericPort: boolean;
+  readonly hasOutOfRangePort: boolean;
 }
 
 /**
@@ -137,6 +142,13 @@ export function loadRuntimeConfig(
 
 /** Builds redacted shape hints without returning or logging the rejected value. */
 function getConfigurationDiagnostics(value: string): ConfigurationDiagnostics {
+  const authority = value.slice('https://'.length).split(/[/?#]/u, 1)[0] ?? '';
+  const authorityColonIndex = authority.lastIndexOf(':');
+  const hasAuthorityColon = value.startsWith('https://') && authorityColonIndex >= 0 && !authority.startsWith('[');
+  const portText = hasAuthorityColon ? authority.slice(authorityColonIndex + 1) : '';
+  const hasNonNumericPort = hasAuthorityColon && !/^\d+$/u.test(portText);
+  const hasOutOfRangePort = hasAuthorityColon && /^\d+$/u.test(portText) && Number(portText) > 65_535;
+
   return {
     valueLength: value.length,
     startsWithHttps: value.startsWith('https://'),
@@ -147,6 +159,11 @@ function getConfigurationDiagnostics(value: string): ConfigurationDiagnostics {
     hasWhitespace: /\s/u.test(value),
     hasNonAsciiCharacters: /[^\x00-\x7F]/u.test(value),
     hasBackslash: value.includes('\\'),
+    hasPercentCharacter: value.includes('%'),
+    hasInvalidUrlPunctuation: /[<>{}|^`]/u.test(value),
+    hasAuthorityColon,
+    hasNonNumericPort,
+    hasOutOfRangePort,
   };
 }
 

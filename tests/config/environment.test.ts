@@ -145,6 +145,11 @@ describe('runtime environment validation', () => {
       hasWhitespace: false,
       hasNonAsciiCharacters: false,
       hasBackslash: false,
+      hasPercentCharacter: false,
+      hasInvalidUrlPunctuation: false,
+      hasAuthorityColon: false,
+      hasNonNumericPort: false,
+      hasOutOfRangePort: false,
     });
     expect(error.message).not.toContain('miniapp.example.invalid');
   });
