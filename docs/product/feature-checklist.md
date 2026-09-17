@@ -109,6 +109,8 @@ The product capabilities below remain unfinished unless their own status says ot
 
 ## Administration UI and Telegram delivery capabilities
 
+- [x] **T-04 — Deployment packaging.** Multi-stage Node 24 image, secret-excluding Docker build context, health check, Dokploy-compatible Compose definition, and English deployment runbook. **Status: Implemented** — Docker and Dokploy runtime behavior still require verification on the target host.
+
 - [ ] **F-060 · P1 — Administration Mini App.** Use the same API and authorization as commands; provide drafts, diff, save, and conflict handling. **Status: In progress** — HTTPS URL gating, private Menu Button and settings-flow launch placement, signed Telegram `initData` verification, a schema-validated API, short-lived server-side sessions, origin/CSRF checks, administrator-filtered group listing, optimistic settings writes, and allowlisted responses exist; the React/Vite UI, durable multi-instance sessions, rate limits, and deployment remain. Inline callback keyboards are the fallback.
 - [ ] **F-061 · P2 — Policy simulation and observe mode.** Simulate without Telegram side effects and explain the result against a versioned policy.
 - [ ] **F-065 · P1 — Ephemeral command feedback.** Show private-to-requester responses where the current Telegram method and client support it; retain an appropriate fallback and never mistake ephemeral feedback for group-wide enforcement. **Status: In progress** — `/start`, `/help`, `/ping`, `/id`, `/settings`, and `/cancel` are registered as ephemeral in group menus and reply to the requesting user; private-chat replies remain ordinary messages. Delivery eligibility and supported clients remain unverified, and fail-closed behavior does not publish a public fallback.

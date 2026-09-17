@@ -2,6 +2,8 @@
 
 This document describes the first HTTP contract for the FOAB administration Mini App. The API and the built Vite bundle are served by the same application process as the bot when `FOAB_WEB_APP_URL` is configured. The bundle is mounted at the URL path, while API requests use `/api`. It currently supports the private administration settings slice; moderation, federation, and other group capabilities are not exposed here.
 
+The process exposes `GET /healthz` as an unauthenticated liveness endpoint for Docker and Dokploy. It reports process availability only; it does not claim that PostgreSQL, Telegram, or the administration session flow is ready.
+
 ## Transport and browser boundary
 
 The configured Mini App URL must use HTTPS and must not contain credentials or a fragment. The API accepts JSON bodies up to 16 KiB and returns machine-readable error codes rather than framework or database messages. Responses are marked `no-store` and include a restrictive content security policy.

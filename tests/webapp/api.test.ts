@@ -46,6 +46,14 @@ describe('Mini App settings API', () => {
     await app.close();
   });
 
+  it('exposes a safe liveness endpoint for container orchestration', async () => {
+    const health = await app.inject({ method: 'GET', url: '/healthz' });
+
+    expect(health.statusCode).toBe(200);
+    expect(JSON.parse(health.body) as unknown).toEqual({ status: 'ok' });
+    expect(health.headers['cache-control']).toBe('no-store');
+  });
+
   it('creates a signed session, exposes safe identity, and filters groups by current admin status', async () => {
     const session = await createSession(app);
     const identity = await app.inject({

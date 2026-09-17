@@ -1,0 +1,15 @@
+.git
+.github
+.tools
+node_modules
+dist
+webapp/dist
+coverage
+*.log
+.env
+.env.*
+!.env.example
+tests
+docs
+AGENTS.md
+SECURITY.md

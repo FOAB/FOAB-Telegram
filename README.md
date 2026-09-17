@@ -31,7 +31,7 @@ Not implemented yet:
 - Moderation, automatic replies, admission/Guard, federations, or any other group feature.
 - The remaining Mini App administration surface, durable multi-instance sessions, deployment packaging, and the full three-language interface across future capabilities.
 
-See the [feature checklist](docs/product/feature-checklist.md) for planned, implemented, and verified capabilities, [implementation progress](docs/developer/progress.md) for current evidence and the next task, and the [Mini App API contract](docs/developer/webapp-api.md) for the current HTTP boundary. The [BotFather setup checklist](docs/developer/botfather-setup.md) records when owner-side configuration is and is not needed.
+See the [feature checklist](docs/product/feature-checklist.md) for planned, implemented, and verified capabilities, [implementation progress](docs/developer/progress.md) for current evidence and the next task, and the [Mini App API contract](docs/developer/webapp-api.md) for the current HTTP boundary. The [BotFather setup checklist](docs/developer/botfather-setup.md) records when owner-side configuration is and is not needed. The [Dokploy deployment runbook](docs/developer/dokploy-deployment.md) covers the production container, persistent PostgreSQL, HTTPS domain, migrations, and GitHub deployment flow.
 
 ## Product goals
 
@@ -103,6 +103,7 @@ Application safeguards still to implement and test include server-side authoriza
 | Database | Local schema and group registry in use | PostgreSQL 18 with Drizzle and reviewed SQL migrations |
 | HTTP API | Foundation in progress | Fastify with schema-validated session, group-list, and settings contracts; durable sessions and rate limits remain |
 | Administration UI | Foundation in progress | React, Vite, and TypeScript Mini App with the initial group/settings editor; broader administration remains |
+| Deployment | Container definition available | Multi-stage Node 24 Dockerfile, health endpoint, and Dokploy-compatible Compose file; remote domain, PostgreSQL, TLS, and migration setup remain operator tasks |
 | Durable background work | Planned | PostgreSQL-backed inbox, outbox, and scheduled jobs; Redis/Valkey is not required initially |
 
 The current database slice stores installation identity, group metadata, versioned group language/time-zone settings, and metadata-only update receipts. It does not store message bodies or perform moderation. The settings command checks current authority for the exact group before writing. The inbox lease prevents duplicate update handling; a transactional outbox is still required before durable external effects. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).

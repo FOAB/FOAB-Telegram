@@ -101,6 +101,10 @@ export function createWebAppServer(
     sendApiError(reply, statusCode, statusCode === 413 ? 'payload_too_large' : 'server_error');
   });
 
+  app.get('/healthz', async (_request, reply) => {
+    return reply.send({ status: 'ok' });
+  });
+
   app.post('/api/session', async (request: FastifyRequest<{ Body: unknown }>, reply) => {
     if (!isExactOrigin(request, origin) || !isJsonRequest(request)) {
       return sendApiError(reply, 403, 'origin_denied');
