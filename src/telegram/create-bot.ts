@@ -1,5 +1,5 @@
 import { Bot, type Context } from 'grammy';
-import type { InlineKeyboardMarkup, Message } from 'grammy/types';
+import type { Chat, InlineKeyboardMarkup, Message } from 'grammy/types';
 import type {
   GroupRecord,
   GroupRepository,
@@ -37,6 +37,30 @@ import {
 } from './settings-keyboard.js';
 
 /** Dependencies required by handlers that persist group scope. */
+export type BotUpdateKind = 'message' | 'my_chat_member' | 'callback_query';
+
+/** Chat categories that may appear in an operational event without chat identity. */
+export type BotChatType = 'private' | 'group' | 'supergroup' | 'channel';
+
+/** Explicit allowlist for non-sensitive Telegram processing telemetry. */
+export interface BotLogFields {
+  readonly updateKind?: BotUpdateKind;
+  readonly chatType?: BotChatType;
+  readonly command?: 'start' | 'help' | 'ping' | 'id' | 'settings' | 'cancel';
+  readonly inboxClaimed?: boolean;
+  readonly observedGroup?: boolean;
+  readonly groupActive?: boolean;
+  readonly adminCheck?: boolean;
+  readonly botStatus?: BotGroupStatus;
+  readonly membershipActive?: boolean;
+}
+
+/** Logger contract restricted to the safe fields emitted by bot handlers. */
+export interface BotLogger {
+  readonly info: (event: string, fields?: BotLogFields) => void;
+}
+
+/** Dependencies required by handlers that persist group scope. */
 export interface BotDependencies {
   readonly installationId: string;
   readonly groups: GroupRepository;
@@ -44,6 +68,7 @@ export interface BotDependencies {
   readonly inbox?: UpdateInboxRepository;
   readonly flows?: ActiveFlowStore;
   readonly privateSelections?: PrivateGroupSelectionStore;
+  readonly logger?: BotLogger;
 }
 
 /**
@@ -59,11 +84,24 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
   const privateSelections = dependencies.privateSelections ?? new PrivateGroupSelectionStore();
 
   bot.use(async (context, next) => {
+    const receivedUpdateKind = telegramUpdateKind(context.update);
+    dependencies.logger?.info(
+      'telegram_update_received',
+      receivedUpdateKind === null ? {} : { updateKind: receivedUpdateKind },
+    );
     const normalized = normalizeTelegramUpdate(context.update);
     if (!normalized) {
+      dependencies.logger?.info(
+        'telegram_update_ignored',
+        receivedUpdateKind === null ? {} : { updateKind: receivedUpdateKind },
+      );
       return;
     }
     if (!dependencies.inbox) {
+      dependencies.logger?.info('telegram_update_accepted', {
+        updateKind: normalized.kind,
+        inboxClaimed: true,
+      });
       await next();
       return;
     }
@@ -74,8 +112,16 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       normalized.kind,
     );
     if (!claimed) {
+      dependencies.logger?.info('telegram_update_skipped', {
+        updateKind: normalized.kind,
+        inboxClaimed: false,
+      });
       return;
     }
+    dependencies.logger?.info('telegram_update_claimed', {
+      updateKind: normalized.kind,
+      inboxClaimed: true,
+    });
 
     try {
       await next();
@@ -86,6 +132,9 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       if (!processed) {
         throw new Error('The Telegram update lease could not be completed.');
       }
+      dependencies.logger?.info('telegram_update_processed', {
+        updateKind: normalized.kind,
+      });
     } catch (error: unknown) {
       try {
         await dependencies.inbox.markFailed(
@@ -119,6 +168,11 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       username: chat.username ?? null,
       botStatus: status,
       isActive,
+    });
+    dependencies.logger?.info('telegram_group_membership_registered', {
+      chatType: chat.type,
+      botStatus: status,
+      membershipActive: isActive,
     });
   });
 
@@ -199,6 +253,13 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       ? supportedLocale(group.locale)
       : localeFromTelegram(context.from?.language_code);
     const messages = getMessages(locale);
+    const chatType = botChatType(context.chat);
+    dependencies.logger?.info('telegram_settings_scope_resolved', {
+      ...(chatType === null ? {} : { chatType }),
+      observedGroup: group !== null,
+      ...(group === null ? {} : { groupActive: group.isActive }),
+      command: 'settings',
+    });
 
     if (!group) {
       await handlePrivateSettings(
@@ -210,7 +271,15 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       );
       return;
     }
-    if (!group.isActive || !(await isCurrentGroupAdministrator(context))) {
+    const administrator = await isCurrentGroupAdministrator(context);
+    dependencies.logger?.info('telegram_settings_admin_checked', {
+      chatType: group.chatType,
+      observedGroup: true,
+      groupActive: group.isActive,
+      adminCheck: administrator,
+      command: 'settings',
+    });
+    if (!group.isActive || !administrator) {
       await replyToCommand(context, messages.settingsNotAuthorized);
       return;
     }
@@ -339,15 +408,48 @@ async function observeCurrentGroup(
 ) {
   const chat = context.chat;
   if (!chat || (chat.type !== 'group' && chat.type !== 'supergroup')) {
+    const chatType = botChatType(chat);
+    dependencies.logger?.info(
+      'telegram_group_observation_skipped',
+      chatType === null ? {} : { chatType },
+    );
     return null;
   }
 
-  return dependencies.groups.observe(dependencies.installationId, {
+  const group = await dependencies.groups.observe(dependencies.installationId, {
     telegramChatId: BigInt(chat.id),
     chatType: chat.type,
     title: chat.title,
     username: chat.username ?? null,
   });
+  dependencies.logger?.info('telegram_group_observed', {
+    chatType: chat.type,
+    observedGroup: true,
+    groupActive: group.isActive,
+  });
+  return group;
+}
+
+/** Identifies only update variants that the runtime explicitly handles. */
+export function telegramUpdateKind(update: Context['update']): BotUpdateKind | null {
+  if (update.message !== undefined) {
+    return 'message';
+  }
+  if (update.my_chat_member !== undefined) {
+    return 'my_chat_member';
+  }
+  if (update.callback_query !== undefined) {
+    return 'callback_query';
+  }
+  return null;
+}
+
+/** Converts Telegram chat types to the bounded operational-log vocabulary. */
+function botChatType(chat: Chat | undefined): BotChatType | null {
+  if (!chat) {
+    return null;
+  }
+  return chat.type;
 }
 
 /** Handles private group discovery and updates with normal private-chat replies. */

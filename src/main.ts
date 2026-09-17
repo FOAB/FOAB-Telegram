@@ -16,9 +16,9 @@ import {
   privateMenuButton,
   privateCommandMenu,
 } from './telegram/commands.js';
-import { createBot } from './telegram/create-bot.js';
+import { createBot, type BotLogFields } from './telegram/create-bot.js';
 
-interface SafeLogFields {
+interface SafeLogFields extends BotLogFields {
   readonly botId?: number;
   readonly configurationVariables?: readonly string[];
   readonly configurationIssues?: readonly ConfigurationIssueLog[];
@@ -102,6 +102,11 @@ async function main(): Promise<void> {
       groups,
       inbox: new UpdateInboxRepository(database.db),
       ...(config.webAppUrl === null ? {} : { webAppUrl: config.webAppUrl }),
+      logger: {
+        info: (event: string, fields: BotLogFields = {}) => {
+          writeLog('info', event, { phase: activeStartupPhase, ...fields });
+        },
+      },
     });
 
     activeStartupPhase = 'telegram_command_registration';
