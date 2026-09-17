@@ -273,7 +273,7 @@ function signedInitData(fields: Readonly<Record<string, string>>): string {
     .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
     .map(([key, value]) => `${key}=${value}`)
     .join('\n');
-  const secretKey = createHmac('sha256', syntheticToken).update('WebAppData').digest();
+  const secretKey = createHmac('sha256', 'WebAppData').update(syntheticToken).digest();
   const hash = createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
   params.set('hash', hash);
   return params.toString();

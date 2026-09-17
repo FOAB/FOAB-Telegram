@@ -85,7 +85,7 @@ export function validateTelegramWebAppInitData(
   const dataCheckString = pairs
     .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
     .join('\n');
-  const secretKey = createHmac('sha256', botToken).update('WebAppData').digest();
+  const secretKey = createHmac('sha256', 'WebAppData').update(botToken).digest();
   const expectedHash = createHmac('sha256', secretKey).update(dataCheckString).digest();
   const receivedHash = Buffer.from(hash, 'hex');
   if (receivedHash.length !== expectedHash.length || !timingSafeEqual(receivedHash, expectedHash)) {

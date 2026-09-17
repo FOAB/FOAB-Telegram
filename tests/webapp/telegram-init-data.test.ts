@@ -59,6 +59,22 @@ describe('Telegram Mini App init data validation', () => {
     expect(validateTelegramWebAppInitData(invalidUser, syntheticToken, syntheticNow)).toBeNull();
     expect(validateTelegramWebAppInitData(valid, 'another-synthetic-token', syntheticNow)).toBeNull();
   });
+
+  it('rejects signatures produced with the HMAC key and message reversed', () => {
+    const fields = {
+      auth_date: String(syntheticNow - 30),
+      user: JSON.stringify({ id: 1_000_000_001, is_bot: false }),
+    };
+    const params = new URLSearchParams(fields);
+    const dataCheckString = [...params.entries()]
+      .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n');
+    const reversedSecret = createHmac('sha256', syntheticToken).update('WebAppData').digest();
+    params.set('hash', createHmac('sha256', reversedSecret).update(dataCheckString).digest('hex'));
+
+    expect(validateTelegramWebAppInitData(params.toString(), syntheticToken, syntheticNow)).toBeNull();
+  });
 });
 
 function signedInitData(fields: Readonly<Record<string, string>>): string {
@@ -67,7 +83,7 @@ function signedInitData(fields: Readonly<Record<string, string>>): string {
     .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
     .map(([key, value]) => `${key}=${value}`)
     .join('\n');
-  const secretKey = createHmac('sha256', syntheticToken).update('WebAppData').digest();
+  const secretKey = createHmac('sha256', 'WebAppData').update(syntheticToken).digest();
   const hash = createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
   params.set('hash', hash);
   return params.toString();
