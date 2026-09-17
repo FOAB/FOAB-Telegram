@@ -1,4 +1,4 @@
-import { loadRuntimeConfig } from './config/environment.js';
+import { ConfigurationError, loadRuntimeConfig } from './config/environment.js';
 import { createDatabase } from './db/database.js';
 import { ensureCurrentInstallation } from './db/installation-repository.js';
 import { GroupRepository } from './db/group-repository.js';
@@ -15,6 +15,7 @@ import { createBot } from './telegram/create-bot.js';
 
 interface SafeLogFields {
   readonly botId?: number;
+  readonly configurationVariables?: readonly string[];
   readonly updateId?: number;
   readonly errorType?: string;
 }
@@ -123,8 +124,12 @@ async function main(): Promise<void> {
 }
 
 void main().catch((error: unknown) => {
+  const configurationVariables = error instanceof ConfigurationError
+    ? error.variableNames
+    : undefined;
   writeLog('error', 'telegram_bot_start_failed', {
     errorType: error instanceof Error ? error.name : 'UnknownError',
+    ...(configurationVariables === undefined ? {} : { configurationVariables }),
   });
   process.exitCode = 1;
 });
