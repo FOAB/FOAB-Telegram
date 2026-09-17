@@ -71,12 +71,20 @@ describe('runtime environment validation', () => {
       expect(error).toBeInstanceOf(ConfigurationError);
       expect(error.message).toContain(runtimeEnvironmentKeys.telegramBotToken);
       expect(error.message).not.toContain('token-with-padding');
+      expect(error.issues[0]?.reason).toBe(
+        token === undefined ? 'missing' : token.length === 0 ? 'empty' : 'surrounding_whitespace',
+      );
     },
   );
 
-  it.each([undefined, '', 'not-a-url', 'https://example.invalid/path']) (
+  it.each([
+    [undefined, 'missing'],
+    ['', 'empty'],
+    ['not-a-url', 'invalid_url'],
+    ['https://example.invalid/path', 'wrong_protocol'],
+  ] as const) (
     'rejects an absent or invalid database URL without echoing it',
-    (databaseUrl) => {
+    (databaseUrl, expectedReason) => {
       const error = captureConfigurationError(() =>
         loadRuntimeConfig({
           [runtimeEnvironmentKeys.telegramBotToken]: 'synthetic-token-value',
@@ -87,6 +95,7 @@ describe('runtime environment validation', () => {
       expect(error).toBeInstanceOf(ConfigurationError);
       expect(error.message).toContain(runtimeEnvironmentKeys.databaseUrl);
       expect(error.message).not.toContain('synthetic_password');
+      expect(error.issues[0]?.reason).toBe(expectedReason);
     },
   );
 
@@ -105,6 +114,13 @@ describe('runtime environment validation', () => {
       expect(error).toBeInstanceOf(ConfigurationError);
       expect(error.message).toContain(runtimeEnvironmentKeys.webAppUrl);
       expect(error.message).not.toContain(webAppUrl);
+      expect(error.issues[0]?.reason).toBe(
+        webAppUrl.startsWith('http:')
+          ? 'wrong_protocol'
+          : webAppUrl.includes('@')
+            ? 'embedded_credentials'
+            : 'fragment_not_allowed',
+      );
     },
   );
 });

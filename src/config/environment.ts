@@ -16,17 +16,43 @@ export interface RuntimeConfig {
   readonly webAppUrl: string | null;
 }
 
+/** Safe reason codes that identify a configuration validation failure. */
+export type ConfigurationIssueReason =
+  | 'missing'
+  | 'empty'
+  | 'surrounding_whitespace'
+  | 'invalid_url'
+  | 'wrong_protocol'
+  | 'missing_hostname'
+  | 'missing_database_name'
+  | 'missing_database_credentials'
+  | 'embedded_credentials'
+  | 'fragment_not_allowed'
+  | 'invalid_host'
+  | 'invalid_port';
+
+/** A redacted configuration issue that never contains the rejected value. */
+export interface ConfigurationIssue {
+  readonly variableName: string;
+  readonly reason: ConfigurationIssueReason;
+}
+
 /**
- * Reports invalid configuration using variable names only, never their values.
+ * Reports invalid configuration using variable names and safe reason codes only.
  */
 export class ConfigurationError extends Error {
   /** Environment variable names that are missing or invalid. */
   public readonly variableNames: readonly string[];
+  /** Redacted issue details that never contain environment values. */
+  public readonly issues: readonly ConfigurationIssue[];
 
-  public constructor(variableNames: readonly string[]) {
-    super(`Missing or invalid environment variables: ${variableNames.join(', ')}`);
+  public constructor(issues: readonly ConfigurationIssue[]) {
+    const variableNames = issues.map((issue) => issue.variableName);
+    const details = issues.map((issue) => `${issue.variableName}:${issue.reason}`).join(', ');
+    super(`Missing or invalid environment variables: ${details}`);
     this.name = 'ConfigurationError';
     this.variableNames = [...variableNames];
+    this.issues = issues.map((issue) => ({ ...issue }));
   }
 }
 
@@ -50,30 +76,36 @@ export function loadRuntimeConfig(
   const webAppHost = environment[webAppHostKey] ?? '127.0.0.1';
   const webAppPort = environment[webAppPortKey] ?? '3000';
   const webAppUrl = environment[webAppUrlKey];
-  const invalidVariables: string[] = [];
+  const issues: ConfigurationIssue[] = [];
 
-  if (token === undefined || token.trim().length === 0 || token !== token.trim()) {
-    invalidVariables.push(tokenKey);
+  if (token === undefined) {
+    issues.push({ variableName: tokenKey, reason: 'missing' });
+  } else if (token.length === 0) {
+    issues.push({ variableName: tokenKey, reason: 'empty' });
+  } else if (token !== token.trim()) {
+    issues.push({ variableName: tokenKey, reason: 'surrounding_whitespace' });
   }
 
-  if (databaseUrl === undefined || !isValidPostgresUrl(databaseUrl)) {
-    invalidVariables.push(databaseUrlKey);
+  const databaseIssue = databaseUrl === undefined ? 'missing' : getPostgresUrlIssue(databaseUrl);
+  if (databaseIssue !== null) {
+    issues.push({ variableName: databaseUrlKey, reason: databaseIssue });
   }
 
   if (!isValidWebAppHost(webAppHost)) {
-    invalidVariables.push(webAppHostKey);
+    issues.push({ variableName: webAppHostKey, reason: 'invalid_host' });
   }
 
   if (!isValidWebAppPort(webAppPort)) {
-    invalidVariables.push(webAppPortKey);
+    issues.push({ variableName: webAppPortKey, reason: 'invalid_port' });
   }
 
-  if (webAppUrl !== undefined && !isValidWebAppUrl(webAppUrl)) {
-    invalidVariables.push(webAppUrlKey);
+  const webAppIssue = webAppUrl === undefined ? null : getWebAppUrlIssue(webAppUrl);
+  if (webAppIssue !== null) {
+    issues.push({ variableName: webAppUrlKey, reason: webAppIssue });
   }
 
-  if (invalidVariables.length > 0 || token === undefined || databaseUrl === undefined) {
-    throw new ConfigurationError(invalidVariables);
+  if (issues.length > 0 || token === undefined || databaseUrl === undefined) {
+    throw new ConfigurationError(issues);
   }
 
   return Object.freeze({
@@ -85,43 +117,61 @@ export function loadRuntimeConfig(
   });
 }
 
-/** Validates URL shape without retaining or exposing any credential component. */
-function isValidPostgresUrl(value: string): boolean {
+/** Returns a safe reason for a malformed PostgreSQL URL without exposing its value. */
+function getPostgresUrlIssue(value: string): ConfigurationIssueReason | null {
+  if (value.length === 0) {
+    return 'empty';
+  }
   if (value.trim() !== value) {
-    return false;
+    return 'surrounding_whitespace';
   }
 
   try {
     const url = new URL(value);
-    return (
-      (url.protocol === 'postgres:' || url.protocol === 'postgresql:') &&
-      url.hostname.length > 0 &&
-      url.pathname.length > 1 &&
-      url.username.length > 0 &&
-      url.password.length > 0
-    );
+    if (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') {
+      return 'wrong_protocol';
+    }
+    if (url.hostname.length === 0) {
+      return 'missing_hostname';
+    }
+    if (url.pathname.length <= 1) {
+      return 'missing_database_name';
+    }
+    if (url.username.length === 0 || url.password.length === 0) {
+      return 'missing_database_credentials';
+    }
+    return null;
   } catch {
-    return false;
+    return 'invalid_url';
   }
 }
 
-/** Validates an optional HTTPS Mini App origin without accepting embedded credentials. */
-function isValidWebAppUrl(value: string): boolean {
+/** Returns a safe reason for an invalid HTTPS Mini App URL without exposing its value. */
+function getWebAppUrlIssue(value: string): ConfigurationIssueReason | null {
+  if (value.length === 0) {
+    return 'empty';
+  }
   if (value.trim() !== value) {
-    return false;
+    return 'surrounding_whitespace';
   }
 
   try {
     const url = new URL(value);
-    return (
-      url.protocol === 'https:' &&
-      url.hostname.length > 0 &&
-      url.username.length === 0 &&
-      url.password.length === 0 &&
-      url.hash.length === 0
-    );
+    if (url.protocol !== 'https:') {
+      return 'wrong_protocol';
+    }
+    if (url.hostname.length === 0) {
+      return 'missing_hostname';
+    }
+    if (url.username.length > 0 || url.password.length > 0) {
+      return 'embedded_credentials';
+    }
+    if (url.hash.length > 0) {
+      return 'fragment_not_allowed';
+    }
+    return null;
   } catch {
-    return false;
+    return 'invalid_url';
   }
 }
 
