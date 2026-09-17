@@ -123,6 +123,31 @@ describe('runtime environment validation', () => {
       );
     },
   );
+
+  it('reports only redacted shape hints for a malformed Web App assignment', () => {
+    const error = captureConfigurationError(() =>
+      loadRuntimeConfig({
+        [runtimeEnvironmentKeys.telegramBotToken]: 'synthetic-token-value',
+        [runtimeEnvironmentKeys.databaseUrl]:
+          'postgresql://synthetic_user:synthetic_password@127.0.0.1:5432/synthetic_db',
+        [runtimeEnvironmentKeys.webAppUrl]: 'FOAB_WEB_APP_URL="https://miniapp.example.invalid"',
+      }),
+    );
+
+    expect(error.issues[0]?.reason).toBe('invalid_url');
+    expect(error.issues[0]?.diagnostics).toEqual({
+      valueLength: 50,
+      startsWithHttps: false,
+      startsWithHttp: false,
+      looksLikeEnvironmentAssignment: true,
+      hasQuotes: true,
+      hasControlCharacters: false,
+      hasWhitespace: false,
+      hasNonAsciiCharacters: false,
+      hasBackslash: false,
+    });
+    expect(error.message).not.toContain('miniapp.example.invalid');
+  });
 });
 
 function captureConfigurationError(action: () => unknown): ConfigurationError {

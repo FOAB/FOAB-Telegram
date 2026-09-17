@@ -35,6 +35,20 @@ export type ConfigurationIssueReason =
 export interface ConfigurationIssue {
   readonly variableName: string;
   readonly reason: ConfigurationIssueReason;
+  readonly diagnostics?: ConfigurationDiagnostics;
+}
+
+/** Non-sensitive shape hints for diagnosing a rejected Web App environment value. */
+export interface ConfigurationDiagnostics {
+  readonly valueLength: number;
+  readonly startsWithHttps: boolean;
+  readonly startsWithHttp: boolean;
+  readonly looksLikeEnvironmentAssignment: boolean;
+  readonly hasQuotes: boolean;
+  readonly hasControlCharacters: boolean;
+  readonly hasWhitespace: boolean;
+  readonly hasNonAsciiCharacters: boolean;
+  readonly hasBackslash: boolean;
 }
 
 /**
@@ -101,7 +115,11 @@ export function loadRuntimeConfig(
 
   const webAppIssue = webAppUrl === undefined ? null : getWebAppUrlIssue(webAppUrl);
   if (webAppIssue !== null) {
-    issues.push({ variableName: webAppUrlKey, reason: webAppIssue });
+    issues.push({
+      variableName: webAppUrlKey,
+      reason: webAppIssue,
+      ...(webAppUrl === undefined ? {} : { diagnostics: getConfigurationDiagnostics(webAppUrl) }),
+    });
   }
 
   if (issues.length > 0 || token === undefined || databaseUrl === undefined) {
@@ -115,6 +133,21 @@ export function loadRuntimeConfig(
     webAppPort: Number(webAppPort),
     webAppUrl: webAppUrl ?? null,
   });
+}
+
+/** Builds redacted shape hints without returning or logging the rejected value. */
+function getConfigurationDiagnostics(value: string): ConfigurationDiagnostics {
+  return {
+    valueLength: value.length,
+    startsWithHttps: value.startsWith('https://'),
+    startsWithHttp: value.startsWith('http://'),
+    looksLikeEnvironmentAssignment: /^[A-Za-z_][A-Za-z0-9_]*=/u.test(value),
+    hasQuotes: value.includes('"') || value.includes("'"),
+    hasControlCharacters: /[\u0000-\u001F\u007F]/u.test(value),
+    hasWhitespace: /\s/u.test(value),
+    hasNonAsciiCharacters: /[^\x00-\x7F]/u.test(value),
+    hasBackslash: value.includes('\\'),
+  };
 }
 
 /** Returns a safe reason for a malformed PostgreSQL URL without exposing its value. */

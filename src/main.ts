@@ -1,6 +1,7 @@
 import {
   ConfigurationError,
   loadRuntimeConfig,
+  type ConfigurationDiagnostics,
   type ConfigurationIssueReason,
 } from './config/environment.js';
 import { createDatabase } from './db/database.js';
@@ -30,6 +31,7 @@ interface SafeLogFields {
 interface ConfigurationIssueLog {
   readonly variableName: string;
   readonly reason: ConfigurationIssueReason;
+  readonly diagnostics?: ConfigurationDiagnostics;
 }
 
 type StartupPhase =
@@ -192,6 +194,7 @@ void main().catch((error: unknown) => {
     ? error.issues.map((issue) => ({
       variableName: issue.variableName,
       reason: issue.reason,
+      ...(issue.diagnostics === undefined ? {} : { diagnostics: issue.diagnostics }),
     }))
     : undefined;
   writeLog('error', 'telegram_bot_start_failed', {
