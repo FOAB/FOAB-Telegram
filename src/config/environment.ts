@@ -51,9 +51,23 @@ export interface ConfigurationDiagnostics {
   readonly hasBackslash: boolean;
   readonly hasPercentCharacter: boolean;
   readonly hasInvalidUrlPunctuation: boolean;
+  readonly invalidUrlPunctuation: InvalidUrlPunctuationDiagnostic | null;
   readonly hasAuthorityColon: boolean;
   readonly hasNonNumericPort: boolean;
   readonly hasOutOfRangePort: boolean;
+}
+
+/** Identifies one non-secret invalid punctuation character without logging the URL. */
+export interface InvalidUrlPunctuationDiagnostic {
+  readonly kind:
+    | 'less_than'
+    | 'greater_than'
+    | 'left_brace'
+    | 'right_brace'
+    | 'pipe'
+    | 'caret'
+    | 'backtick';
+  readonly index: number;
 }
 
 /**
@@ -148,6 +162,7 @@ function getConfigurationDiagnostics(value: string): ConfigurationDiagnostics {
   const portText = hasAuthorityColon ? authority.slice(authorityColonIndex + 1) : '';
   const hasNonNumericPort = hasAuthorityColon && !/^\d+$/u.test(portText);
   const hasOutOfRangePort = hasAuthorityColon && /^\d+$/u.test(portText) && Number(portText) > 65_535;
+  const invalidUrlPunctuation = findInvalidUrlPunctuation(value);
 
   return {
     valueLength: value.length,
@@ -160,11 +175,33 @@ function getConfigurationDiagnostics(value: string): ConfigurationDiagnostics {
     hasNonAsciiCharacters: /[^\x00-\x7F]/u.test(value),
     hasBackslash: value.includes('\\'),
     hasPercentCharacter: value.includes('%'),
-    hasInvalidUrlPunctuation: /[<>{}|^`]/u.test(value),
+    hasInvalidUrlPunctuation: invalidUrlPunctuation !== null,
+    invalidUrlPunctuation,
     hasAuthorityColon,
     hasNonNumericPort,
     hasOutOfRangePort,
   };
+}
+
+/** Returns the first prohibited punctuation marker as a safe category and index. */
+function findInvalidUrlPunctuation(value: string): InvalidUrlPunctuationDiagnostic | null {
+  const punctuationKinds = new Map<string, InvalidUrlPunctuationDiagnostic['kind']>([
+    ['<', 'less_than'],
+    ['>', 'greater_than'],
+    ['{', 'left_brace'],
+    ['}', 'right_brace'],
+    ['|', 'pipe'],
+    ['^', 'caret'],
+    ['`', 'backtick'],
+  ]);
+
+  for (const [index, character] of [...value].entries()) {
+    const kind = punctuationKinds.get(character);
+    if (kind !== undefined) {
+      return { kind, index };
+    }
+  }
+  return null;
 }
 
 /** Returns a safe reason for a malformed PostgreSQL URL without exposing its value. */

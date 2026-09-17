@@ -147,11 +147,30 @@ describe('runtime environment validation', () => {
       hasBackslash: false,
       hasPercentCharacter: false,
       hasInvalidUrlPunctuation: false,
+      invalidUrlPunctuation: null,
       hasAuthorityColon: false,
       hasNonNumericPort: false,
       hasOutOfRangePort: false,
     });
     expect(error.message).not.toContain('miniapp.example.invalid');
+  });
+
+  it('identifies invalid URL punctuation without logging the configured URL', () => {
+    const rejectedUrl = 'https://miniapp.example.invalid^';
+    const error = captureConfigurationError(() =>
+      loadRuntimeConfig({
+        [runtimeEnvironmentKeys.telegramBotToken]: 'synthetic-token-value',
+        [runtimeEnvironmentKeys.databaseUrl]:
+          'postgresql://synthetic_user:synthetic_password@127.0.0.1:5432/synthetic_db',
+        [runtimeEnvironmentKeys.webAppUrl]: rejectedUrl,
+      }),
+    );
+
+    expect(error.issues[0]?.diagnostics?.invalidUrlPunctuation).toEqual({
+      kind: 'caret',
+      index: 31,
+    });
+    expect(error.message).not.toContain(rejectedUrl);
   });
 });
 
