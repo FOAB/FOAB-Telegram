@@ -8,6 +8,7 @@ import {
   groupAdministratorCommandMenu,
   groupCommandMenu,
   localizedCommandMenus,
+  privateMenuButton,
   privateCommandMenu,
 } from './telegram/commands.js';
 import { createBot } from './telegram/create-bot.js';
@@ -86,6 +87,9 @@ async function main(): Promise<void> {
         language_code: menu.languageCode,
       });
     }
+    await bot.api.setChatMenuButton({
+      menu_button: privateMenuButton(config.webAppUrl),
+    });
 
     const webAppServer = config.webAppUrl === null
       ? null

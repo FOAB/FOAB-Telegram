@@ -1,4 +1,4 @@
-import type { BotCommand } from 'grammy/types';
+import type { BotCommand, MenuButton } from 'grammy/types';
 import type { SupportedLocale } from '../i18n/messages.js';
 
 /** Commands shown in a private chat, where ordinary message delivery is appropriate. */
@@ -10,6 +10,24 @@ export const privateCommandMenu = [
   { command: 'settings', description: 'Open group settings' },
   { command: 'cancel', description: 'Cancel the active flow' },
 ] satisfies readonly BotCommand[];
+
+/**
+ * Selects the default private-chat entry point for group administration.
+ *
+ * The Mini App is the primary surface when a validated HTTPS URL is configured.
+ * The Telegram command menu remains the safe default when the URL is absent.
+ */
+export function privateMenuButton(webAppUrl: string | null): MenuButton {
+  if (webAppUrl === null) {
+    return { type: 'commands' };
+  }
+
+  return {
+    type: 'web_app',
+    text: 'FOAB',
+    web_app: { url: webAppUrl },
+  };
+}
 
 /** Group commands shown to every member; each response is explicitly ephemeral. */
 export const groupCommandMenu = [
