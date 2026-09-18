@@ -100,10 +100,16 @@ function normalizeMessage(
   updateId: number,
   message: NonNullable<Update['message']>,
 ): NormalizedMessageUpdate | null {
-  const messageId = safePositiveInteger(message.message_id);
+  const messageId = safeNonNegativeInteger(message.message_id);
+  const ephemeralMessageId = safePositiveInteger(message.ephemeral_message_id);
   const chat = normalizeChat(message.chat);
   const sender = normalizeSender(message.from);
-  if (messageId === null || !chat || !sender) {
+  if (
+    messageId === null ||
+    (messageId === 0 && ephemeralMessageId === null) ||
+    !chat ||
+    !sender
+  ) {
     return null;
   }
 
@@ -121,7 +127,7 @@ function normalizeMessage(
     sender,
     text: text ?? null,
     caption: caption ?? null,
-    ephemeralMessageId: safePositiveInteger(message.ephemeral_message_id) ?? null,
+    ephemeralMessageId,
   };
 }
 

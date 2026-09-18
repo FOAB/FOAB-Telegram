@@ -8,7 +8,7 @@ describe('Telegram update normalization', () => {
     expect(normalizeTelegramUpdate(ephemeralMessageUpdate)).toEqual({
       kind: 'message',
       updateId: 9_000_000_001,
-      messageId: 7_000_000_001,
+      messageId: 0,
       chat: {
         id: -1_000_000_000_001n,
         type: 'supergroup',
@@ -133,5 +133,21 @@ describe('Telegram update normalization', () => {
     expect(normalizeTelegramUpdate(oversized)).toBeNull();
     expect(normalizeTelegramUpdate(unknownVariant)).toBeNull();
     expect(normalizeTelegramUpdate(unsafeUpdateId)).toBeNull();
+  });
+
+  it('rejects a zero ordinary message ID without an ephemeral message ID', () => {
+    const invalidOrdinaryMessage = {
+      update_id: ephemeralMessageUpdate.update_id,
+      message: {
+        chat: ephemeralMessageUpdate.message.chat,
+        date: ephemeralMessageUpdate.message.date,
+        from: ephemeralMessageUpdate.message.from,
+        message_id: 0,
+        receiver_user: ephemeralMessageUpdate.message.receiver_user,
+        text: ephemeralMessageUpdate.message.text,
+      },
+    } satisfies Update;
+
+    expect(normalizeTelegramUpdate(invalidOrdinaryMessage)).toBeNull();
   });
 });

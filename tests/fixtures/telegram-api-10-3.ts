@@ -20,7 +20,7 @@ export const ephemeralMessageUpdate = {
     date: 1_800_000_000,
     ephemeral_message_id: 7_000_000_001,
     from: syntheticUser,
-    message_id: 7_000_000_001,
+    message_id: 0,
     receiver_user: syntheticUser,
     text: '/config',
   },

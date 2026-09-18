@@ -31,6 +31,8 @@ These are SDK/type checks, not proof that a Telegram client displays a feature, 
 
 The current group menu entries set `is_ephemeral: true` for `/start`, `/help`, `/ping`, `/id`, `/settings`, and `/cancel`. Their handler responses set `ephemeral_message_parameters.receiver_user_id` from the authenticated update and, when the incoming command includes an ephemeral message ID, reply using `reply_parameters.ephemeral_message_id`. Settings callback actions edit the originating ephemeral message when Telegram supplies its ephemeral identifier. Delivery failures do not trigger a public group fallback. Private-chat responses and Web App launches remain ordinary private interactions. See Telegram's current [ephemeral message and command rules](https://core.telegram.org/bots/api#ephemeral-messages-and-commands); actual client delivery remains an open verification gate.
 
+Incoming ephemeral command messages may use `message_id: 0` while carrying their usable identity in `ephemeral_message_id`. FOAB accepts zero only when a positive ephemeral message ID is present; an ordinary message with a zero ID remains invalid. This distinction is enforced before durable inbox processing so valid private-to-requester commands reach their group handlers without weakening the ordinary-message boundary.
+
 FOAB's command registry will publish separate member and administrator menu lists using Telegram's command scopes and language codes. The menu is discoverability only; command handlers still perform server-side authorization for the actual group and actor. See the [BotFather setup checklist](../developer/botfather-setup.md).
 
 ## Behavior and privacy constraints
