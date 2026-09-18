@@ -67,6 +67,7 @@ describe('settings command contract', () => {
     expect(privateCommandMenu.map((command) => command.command)).toContain('settings');
     expect(groupCommandMenu.map((command) => command.command)).not.toContain('settings');
     expect(groupAdministratorCommandMenu.map((command) => command.command)).toContain('settings');
+    expect(groupAdministratorCommandMenu.map((command) => command.command)).toContain('reload');
     expect(groupAdministratorCommandMenu.map((command) => command.command)).toEqual(
       expect.arrayContaining(['ping', 'id']),
     );
@@ -78,6 +79,9 @@ describe('settings command contract', () => {
       expect(menu.groupAdministratorCommands.every((command) => command.is_ephemeral === true)).toBe(true);
       expect(menu.groupAdministratorCommands.map((command) => command.command)).toEqual(
         expect.arrayContaining(['ping', 'id', 'settings']),
+      );
+      expect(menu.groupAdministratorCommands.map((command) => command.command)).toEqual(
+        expect.arrayContaining(['reload']),
       );
     }
   });

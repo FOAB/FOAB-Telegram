@@ -46,11 +46,12 @@ export type BotChatType = 'private' | 'group' | 'supergroup' | 'channel';
 export interface BotLogFields {
   readonly updateKind?: BotUpdateKind;
   readonly chatType?: BotChatType;
-  readonly command?: 'start' | 'help' | 'ping' | 'id' | 'settings' | 'cancel';
+  readonly command?: 'start' | 'help' | 'ping' | 'id' | 'settings' | 'reload' | 'cancel';
   readonly inboxClaimed?: boolean;
   readonly observedGroup?: boolean;
   readonly groupActive?: boolean;
   readonly adminCheck?: boolean;
+  readonly reloadSucceeded?: boolean;
   readonly botStatus?: BotGroupStatus;
   readonly membershipActive?: boolean;
 }
@@ -328,6 +329,41 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     );
   });
 
+  bot.command('reload', async (context) => {
+    const group = await observeCurrentGroup(context, dependencies);
+    const locale = group
+      ? supportedLocale(group.locale)
+      : localeFromTelegram(context.from?.language_code);
+    const messages = getMessages(locale);
+    const chatType = botChatType(context.chat);
+    const administrator = group ? await isCurrentGroupAdministrator(context) : false;
+    dependencies.logger?.info('telegram_reload_scope_resolved', {
+      ...(chatType === null ? {} : { chatType }),
+      observedGroup: group !== null,
+      ...(group === null ? {} : { groupActive: group.isActive }),
+      adminCheck: administrator,
+      command: 'reload',
+    });
+
+    if (!group || !group.isActive || !administrator) {
+      await replyToCommand(context, messages.reloadNotAuthorized);
+      return;
+    }
+
+    const reloaded = await reloadCurrentGroup(context, dependencies);
+    dependencies.logger?.info('telegram_group_reload_completed', {
+      ...(chatType === null ? {} : { chatType }),
+      observedGroup: true,
+      groupActive: reloaded,
+      reloadSucceeded: reloaded,
+      command: 'reload',
+    });
+    await replyToCommand(
+      context,
+      reloaded ? messages.reloadCompleted : messages.reloadFailed,
+    );
+  });
+
   bot.command('cancel', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
     const locale = group
@@ -430,6 +466,41 @@ async function observeCurrentGroup(
     groupActive: group.isActive,
   });
   return group;
+}
+
+/** Re-reads the exact group's metadata and the bot's current membership from Telegram. */
+async function reloadCurrentGroup(
+  context: Context,
+  dependencies: BotDependencies,
+): Promise<boolean> {
+  const chat = context.chat;
+  if (!chat || (chat.type !== 'group' && chat.type !== 'supergroup')) {
+    return false;
+  }
+
+  try {
+    const refreshedChat = await context.api.getChat(chat.id);
+    if (refreshedChat.type !== 'group' && refreshedChat.type !== 'supergroup') {
+      return false;
+    }
+    const membership = await context.api.getChatMember(chat.id, context.me.id);
+    const botStatus = mapBotGroupStatus(membership.status);
+    const isActive = membership.status === 'restricted'
+      ? membership.is_member
+      : botStatus !== 'left' && botStatus !== 'kicked';
+
+    await dependencies.groups.register(dependencies.installationId, {
+      telegramChatId: BigInt(refreshedChat.id),
+      chatType: refreshedChat.type,
+      title: refreshedChat.title,
+      username: refreshedChat.username ?? null,
+      botStatus,
+      isActive,
+    });
+    return isActive;
+  } catch {
+    return false;
+  }
 }
 
 /** Identifies only update variants that the runtime explicitly handles. */

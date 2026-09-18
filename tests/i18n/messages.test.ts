@@ -26,5 +26,7 @@ describe('initial message catalogs', () => {
   it('adds administrator help only after the caller is authorized', () => {
     expect(getHelpMessage('en-US', false)).not.toContain('/settings');
     expect(getHelpMessage('en-US', true)).toContain('/settings');
+    expect(getHelpMessage('en-US', true)).toContain('/reload');
+    expect(getHelpMessage('en-US', false)).not.toContain('/reload');
   });
 });

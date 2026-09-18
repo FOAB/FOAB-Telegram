@@ -42,6 +42,7 @@ export const groupCommandMenu = [
 export const groupAdministratorCommandMenu = [
   ...groupCommandMenu,
   { command: 'settings', description: 'Open group settings', is_ephemeral: true },
+  { command: 'reload', description: 'Refresh FOAB group state', is_ephemeral: true },
 ] satisfies readonly BotCommand[];
 
 /** A language-specific command menu published through Telegram's command scopes. */
@@ -87,6 +88,7 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
       { command: 'id', description: 'Mostrar IDs do chat e do usuário', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar seu fluxo ativo', is_ephemeral: true },
       { command: 'settings', description: 'Abrir configurações do grupo', is_ephemeral: true },
+      { command: 'reload', description: 'Atualizar o estado do grupo no FOAB', is_ephemeral: true },
     ],
   },
   {
@@ -114,6 +116,7 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
       { command: 'id', description: 'Mostrar IDs del chat y del usuario', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar tu flujo activo', is_ephemeral: true },
       { command: 'settings', description: 'Abrir ajustes del grupo', is_ephemeral: true },
+      { command: 'reload', description: 'Actualizar el estado del grupo en FOAB', is_ephemeral: true },
     ],
   },
 ] satisfies readonly LocalizedCommandMenu[];

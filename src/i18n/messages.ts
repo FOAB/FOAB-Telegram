@@ -29,6 +29,9 @@ export interface MessageCatalog {
   readonly settingsUpdated: string;
   readonly settingsNotAuthorized: string;
   readonly settingsConflict: string;
+  readonly reloadCompleted: string;
+  readonly reloadFailed: string;
+  readonly reloadNotAuthorized: string;
   readonly cancelNoActiveFlow: string;
   readonly cancelCompleted: string;
 }
@@ -53,7 +56,7 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
     privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
-      "\nAdministrator commands:\n/settings — View or update this group's language and time zone.",
+      "\nAdministrator commands:\n/settings — View or update this group's language and time zone.\n/reload — Refresh this group's current FOAB state.",
     privateSettings:
       'Use /settings to list groups where your administrator status is confirmed. Then use /settings select <number> and update the selected group with `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES`, or `/settings timezone Area/Location`.',
     privateGroupsHeader: 'Groups where you are a current administrator:',
@@ -68,6 +71,9 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsUpdated: 'Group settings updated successfully.',
     settingsNotAuthorized: 'Only a current administrator of this exact group can change its settings.',
     settingsConflict: 'These settings changed before your command was applied. Run /settings again and retry.',
+    reloadCompleted: "FOAB reloaded this group's current state successfully.",
+    reloadFailed: 'FOAB could not reload this group state. Check that the bot is still a group administrator and try again.',
+    reloadNotAuthorized: 'Only a current administrator of this exact group can reload its FOAB state.',
     cancelNoActiveFlow: 'You have no active FOAB flow in this group.',
     cancelCompleted: 'Your active FOAB flow was cancelled.',
   },
@@ -90,7 +96,7 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
     privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
-      '\nComandos de administrador:\n/settings — Ver ou atualizar o idioma e o fuso horário deste grupo.',
+      '\nComandos de administrador:\n/settings — Ver ou atualizar o idioma e o fuso horário deste grupo.\n/reload — Atualizar o estado atual deste grupo no FOAB.',
     privateSettings:
       'Use /settings para listar grupos onde seu status de administrador foi confirmado. Depois use /settings select <número> e atualize o grupo selecionado com `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES` ou `/settings timezone Area/Location`.',
     privateGroupsHeader: 'Grupos onde seu status atual de administrador foi confirmado:',
@@ -105,6 +111,9 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsUpdated: 'Configurações do grupo atualizadas com sucesso.',
     settingsNotAuthorized: 'Somente um administrador atual deste grupo pode alterar suas configurações.',
     settingsConflict: 'Essas configurações mudaram antes do seu comando. Execute /settings novamente e tente de novo.',
+    reloadCompleted: 'O FOAB atualizou o estado atual deste grupo com sucesso.',
+    reloadFailed: 'O FOAB não conseguiu atualizar o estado deste grupo. Verifique se o bot continua administrador e tente novamente.',
+    reloadNotAuthorized: 'Somente um administrador atual deste grupo pode atualizar o estado do FOAB.',
     cancelNoActiveFlow: 'Você não tem um fluxo ativo do FOAB neste grupo.',
     cancelCompleted: 'Seu fluxo ativo do FOAB foi cancelado.',
   },
@@ -127,7 +136,7 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
     privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
-      '\nComandos de administrador:\n/settings — Ver o actualizar el idioma y la zona horaria de este grupo.',
+      '\nComandos de administrador:\n/settings — Ver o actualizar el idioma y la zona horaria de este grupo.\n/reload — Actualizar el estado actual de este grupo en FOAB.',
     privateSettings:
       'Usa /settings para listar grupos donde se confirmó tu estado de administrador. Después usa /settings select <número> y actualiza el grupo elegido con `/settings language en-US`, `/settings language pt-BR`, `/settings language es-ES` o `/settings timezone Area/Location`.',
     privateGroupsHeader: 'Grupos donde se confirmó tu estado actual de administrador:',
@@ -142,6 +151,9 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsUpdated: 'Ajustes del grupo actualizados correctamente.',
     settingsNotAuthorized: 'Solo un administrador actual de este grupo puede cambiar sus ajustes.',
     settingsConflict: 'Estos ajustes cambiaron antes de aplicar tu comando. Ejecuta /settings de nuevo y vuelve a intentarlo.',
+    reloadCompleted: 'FOAB actualizó correctamente el estado actual de este grupo.',
+    reloadFailed: 'FOAB no pudo actualizar el estado de este grupo. Comprueba que el bot siga siendo administrador e inténtalo de nuevo.',
+    reloadNotAuthorized: 'Solo un administrador actual de este grupo puede actualizar el estado de FOAB.',
     cancelNoActiveFlow: 'No tienes un flujo activo de FOAB en este grupo.',
     cancelCompleted: 'Tu flujo activo de FOAB fue cancelado.',
   },
