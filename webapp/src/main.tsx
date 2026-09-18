@@ -91,18 +91,18 @@ function App(): ReactElement {
   }, [locale]);
 
   if (loading) {
-    return <PageShell messages={messages}><LoadingState text={messages.loading} /></PageShell>;
+    return <PageShell messages={messages} webApp={webApp}><LoadingState text={messages.loading} /></PageShell>;
   }
   if (error || !session) {
     return (
-      <PageShell messages={messages}>
+      <PageShell messages={messages} webApp={webApp}>
         <ErrorState message={error ?? messages.genericError} onRetry={() => void load()} messages={messages} />
       </PageShell>
     );
   }
   if (selectedGroup) {
     return (
-      <PageShell messages={messages}>
+      <PageShell messages={messages} webApp={webApp}>
         <SettingsView
           api={api}
           group={selectedGroup}
@@ -116,7 +116,7 @@ function App(): ReactElement {
     );
   }
   return (
-    <PageShell messages={messages}>
+    <PageShell messages={messages} webApp={webApp}>
       <GroupsView groups={groups} messages={messages} onSelect={setSelectedChatId} onReload={() => void load()} />
     </PageShell>
   );
@@ -126,18 +126,30 @@ function App(): ReactElement {
 function PageShell({
   children,
   messages,
+  webApp,
 }: {
   readonly children: ReactNode;
   readonly messages: ReturnType<typeof getUiMessages>;
+  readonly webApp: TelegramWebAppBridge | null;
 }): ReactElement {
   return (
     <main className="app-shell">
       <header className="app-header">
         <div className="app-mark" aria-hidden="true">F</div>
-        <div>
+        <div className="app-header-copy">
           <h1>{messages.appTitle}</h1>
           <p>{messages.appSubtitle}</p>
         </div>
+        {webApp?.close && (
+          <button
+            aria-label={messages.close}
+            className="close-button"
+            type="button"
+            onClick={() => webApp.close?.()}
+          >
+            ×
+          </button>
+        )}
       </header>
       {children}
     </main>

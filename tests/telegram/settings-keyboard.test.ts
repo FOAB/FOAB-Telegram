@@ -14,6 +14,17 @@ describe('settings interaction keyboards', () => {
     expect(buttons.some((button) => 'web_app' in button)).toBe(false);
   });
 
+  it('places the Mini App first while retaining callback fallback actions', () => {
+    const messages = getMessages('en-US');
+    const keyboard = settingsOverviewKeyboard(messages, 'https://miniapp.example.invalid/foab');
+
+    expect(keyboard.inline_keyboard[0]?.[0]).toEqual({
+      text: messages.settingsWebAppButton,
+      web_app: { url: 'https://miniapp.example.invalid/foab' },
+    });
+    expect(keyboard.inline_keyboard.slice(1).flat().every((button) => 'callback_data' in button)).toBe(true);
+  });
+
   it('puts the Web App first in private settings and keeps group selection server-owned', () => {
     const messages = getMessages('pt-BR');
     const keyboard = privateGroupSelectionKeyboard(

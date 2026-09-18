@@ -56,6 +56,31 @@ button:disabled {
   padding: 12px 4px 28px;
 }
 
+.app-header-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.close-button {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--foab-muted-color);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.close-button:hover {
+  background: color-mix(in srgb, var(--foab-muted-color) 14%, transparent);
+  color: var(--foab-text-color);
+}
+
 .app-mark,
 .group-icon {
   display: grid;

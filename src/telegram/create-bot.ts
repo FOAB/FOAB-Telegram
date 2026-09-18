@@ -302,7 +302,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       await replyToCommand(
         context,
         messages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
-        settingsOverviewKeyboard(messages),
+        settingsOverviewKeyboard(messages, dependencies.webAppUrl),
       );
       return;
     }
@@ -324,7 +324,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     await replyToCommand(
       context,
       updatedMessages.settingsUpdated,
-      settingsOverviewKeyboard(updatedMessages),
+      settingsOverviewKeyboard(updatedMessages, dependencies.webAppUrl),
     );
   });
 
@@ -638,7 +638,7 @@ async function handleGroupSettingsCallback(
     await editSettingsMessage(
       context,
       messages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
-      settingsOverviewKeyboard(messages),
+      settingsOverviewKeyboard(messages, dependencies.webAppUrl),
     );
     return null;
   }
@@ -660,7 +660,11 @@ async function handleGroupSettingsCallback(
     settingsUpdateFromCallback(action),
   );
   if (!updated) {
-    await editSettingsMessage(context, messages.settingsConflict, settingsOverviewKeyboard(messages));
+    await editSettingsMessage(
+      context,
+      messages.settingsConflict,
+      settingsOverviewKeyboard(messages, dependencies.webAppUrl),
+    );
     return messages.settingsConflict;
   }
 
@@ -669,7 +673,7 @@ async function handleGroupSettingsCallback(
   await editSettingsMessage(
     context,
     updatedMessages.groupSettings(updated.locale, updated.timeZone, updated.settingsRevision),
-    settingsOverviewKeyboard(updatedMessages),
+    settingsOverviewKeyboard(updatedMessages, dependencies.webAppUrl),
   );
   return updatedMessages.settingsUpdated;
 }
@@ -768,7 +772,11 @@ async function handlePrivateSettingsCallback(
     settingsUpdateFromCallback(action),
   );
   if (!updated) {
-    await editSettingsMessage(context, groupMessages.settingsConflict, settingsOverviewKeyboard(groupMessages));
+    await editSettingsMessage(
+      context,
+      groupMessages.settingsConflict,
+      settingsOverviewKeyboard(groupMessages, dependencies.webAppUrl),
+    );
     return groupMessages.settingsConflict;
   }
 
