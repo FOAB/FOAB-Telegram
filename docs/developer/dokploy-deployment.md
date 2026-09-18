@@ -18,6 +18,8 @@ Set these values in Dokploy's environment configuration. Never commit them to Gi
 ```text
 FOAB_TELEGRAM_BOT_TOKEN=<development-or-production-bot-token>
 FOAB_DATABASE_URL=postgresql://<runtime-user>:<runtime-password>@<postgres-host>:5432/<database>
+# Optional: startup migration role; omit to skip automatic migrations.
+FOAB_MIGRATION_DATABASE_URL=postgresql://<migration-user>:<migration-password>@<postgres-host>:5432/<database>
 FOAB_WEB_APP_URL=https://example.invalid/foab
 FOAB_WEB_APP_HOST=0.0.0.0
 FOAB_WEB_APP_PORT=3000
@@ -27,11 +29,11 @@ FOAB_WEB_APP_PORT=3000
 
 For a Dockerfile application, keep **Create Environment File** disabled and save environment changes before redeploying. This prevents a generated build-time file or stale placeholder from diverging from the runtime values injected into the container.
 
-The runtime container must receive only `FOAB_DATABASE_URL`. Keep `FOAB_MIGRATION_DATABASE_URL` in a separate migration job or a short-lived operator environment; the runtime database role must not own the schema or have migration privileges.
+The image entrypoint runs pending migrations with `FOAB_MIGRATION_DATABASE_URL` when that variable is present. If it is absent, migration is skipped and the bot starts normally. The migration role must be separate from the runtime role and must not be exposed to application code after the migration step. Use one application replica while startup migrations run; a dedicated migration job remains preferable for multi-replica releases.
 
 ## PostgreSQL and migrations
 
-Create a persistent PostgreSQL database in Dokploy or use an external PostgreSQL service. Create a least-privilege runtime role and a separate migration role. Apply the committed Drizzle migrations with the migration connection before the first bot deployment and after schema changes:
+Create a persistent PostgreSQL database in Dokploy or use an external PostgreSQL service. Create a least-privilege runtime role and a separate migration role. For automatic startup migrations, add `FOAB_MIGRATION_DATABASE_URL` to the Dokploy environment. The container applies committed Drizzle migrations before starting the bot and exits without starting it if a migration fails. If the variable is omitted, apply migrations manually with the migration connection before deploying:
 
 ```powershell
 $env:FOAB_MIGRATION_DATABASE_URL = 'postgresql://<migration-user>:<migration-password>@<postgres-host>:5432/<database>'

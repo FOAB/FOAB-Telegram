@@ -27,6 +27,9 @@ RUN pnpm install --prod --frozen-lockfile
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/webapp/dist ./webapp/dist
+COPY --from=build /app/drizzle ./drizzle
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod 0755 ./docker-entrypoint.sh
 
 EXPOSE 3000
 
@@ -34,4 +37,4 @@ USER node
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:3000/healthz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
