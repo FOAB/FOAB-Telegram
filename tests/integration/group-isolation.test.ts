@@ -167,7 +167,12 @@ describe('installation and group persistence boundaries', () => {
       installationA,
       chatId,
       initial.settingsRevision,
-      { locale: 'pt-BR', timeZone: 'America/Sao_Paulo' },
+      {
+        locale: 'pt-BR',
+        timeZone: 'America/Sao_Paulo',
+        welcomeMessage: 'Welcome, synthetic members!',
+        rulesText: 'Synthetic rules only.',
+      },
     );
     const stale = await groups.updateSettings(
       installationA,
@@ -178,6 +183,8 @@ describe('installation and group persistence boundaries', () => {
 
     expect(updated?.locale).toBe('pt-BR');
     expect(updated?.timeZone).toBe('America/Sao_Paulo');
+    expect(updated?.welcomeMessage).toBe('Welcome, synthetic members!');
+    expect(updated?.rulesText).toBe('Synthetic rules only.');
     expect(updated?.settingsRevision).toBe(initial.settingsRevision + 1);
     expect(stale).toBeNull();
   });

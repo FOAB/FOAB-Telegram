@@ -3,6 +3,12 @@ import type { FoabDatabase } from './database.js';
 import type { BotGroupStatus, GroupChatType } from './schema.js';
 import { telegramGroups } from './schema.js';
 
+/** Maximum Telegram message size accepted for automated group messages. */
+export const GROUP_MESSAGE_MAX_LENGTH = 4_096;
+
+/** Maximum rules size, leaving room for the generated heading. */
+export const GROUP_RULES_MAX_LENGTH = 3_800;
+
 /** Data needed to register or refresh a Telegram group. */
 export interface RegisterGroupInput {
   readonly telegramChatId: bigint;
@@ -25,6 +31,9 @@ export interface ObserveGroupInput {
 export interface GroupSettingsUpdate {
   readonly locale?: string;
   readonly timeZone?: string;
+  readonly welcomeMessage?: string | null;
+  readonly goodbyeMessage?: string | null;
+  readonly rulesText?: string | null;
 }
 
 /** Persisted group fields safe for internal application use. */
@@ -37,6 +46,9 @@ export interface GroupRecord {
   readonly locale: string;
   readonly timeZone: string;
   readonly settingsRevision: number;
+  readonly welcomeMessage: string | null;
+  readonly goodbyeMessage: string | null;
+  readonly rulesText: string | null;
   readonly botStatus: BotGroupStatus;
   readonly isActive: boolean;
   readonly createdAt: Date;
@@ -192,7 +204,13 @@ export class GroupRepository {
     if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
       throw new RangeError('Settings revision must be a non-negative integer.');
     }
-    if (update.locale === undefined && update.timeZone === undefined) {
+    if (
+      update.locale === undefined &&
+      update.timeZone === undefined &&
+      update.welcomeMessage === undefined &&
+      update.goodbyeMessage === undefined &&
+      update.rulesText === undefined
+    ) {
       throw new RangeError('At least one group setting must be provided.');
     }
     if (update.locale !== undefined && update.locale.length > 16) {
@@ -201,12 +219,18 @@ export class GroupRepository {
     if (update.timeZone !== undefined && update.timeZone.length > 64) {
       throw new RangeError('Group time zone exceeds the maximum supported length.');
     }
+    validateOptionalGroupMessage(update.welcomeMessage, GROUP_MESSAGE_MAX_LENGTH, 'Welcome message');
+    validateOptionalGroupMessage(update.goodbyeMessage, GROUP_MESSAGE_MAX_LENGTH, 'Goodbye message');
+    validateOptionalGroupMessage(update.rulesText, GROUP_RULES_MAX_LENGTH, 'Rules text');
 
     const rows = await this.db
       .update(telegramGroups)
       .set({
         ...(update.locale === undefined ? {} : { locale: update.locale }),
         ...(update.timeZone === undefined ? {} : { timeZone: update.timeZone }),
+        ...(update.welcomeMessage === undefined ? {} : { welcomeMessage: update.welcomeMessage }),
+        ...(update.goodbyeMessage === undefined ? {} : { goodbyeMessage: update.goodbyeMessage }),
+        ...(update.rulesText === undefined ? {} : { rulesText: update.rulesText }),
         settingsRevision: sql`${telegramGroups.settingsRevision} + 1`,
         updatedAt: new Date(),
       })
@@ -249,5 +273,19 @@ export class GroupRepository {
       )
       .orderBy(desc(telegramGroups.updatedAt))
       .limit(limit);
+  }
+}
+
+/** Validates nullable administrator-authored text before it reaches PostgreSQL. */
+function validateOptionalGroupMessage(
+  value: string | null | undefined,
+  maximumLength: number,
+  fieldName: string,
+): void {
+  if (value === undefined || value === null) {
+    return;
+  }
+  if (value.length > maximumLength || value.includes('\u0000')) {
+    throw new RangeError(`${fieldName} exceeds its maximum size or contains an invalid character.`);
   }
 }

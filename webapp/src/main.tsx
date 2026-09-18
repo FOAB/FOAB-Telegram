@@ -13,6 +13,7 @@ import {
   WebAppApiClient,
   WebAppApiError,
   type GroupSettings,
+  type GroupSettingsUpdate,
   type SessionState,
 } from './api.js';
 import { getUiMessages, localeFromLanguageCode, type UiLocale } from './messages.js';
@@ -238,12 +239,18 @@ function SettingsView({
 }): ReactElement {
   const [locale, setLocale] = useState<UiLocale>(group.locale);
   const [timeZone, setTimeZone] = useState(group.timeZone);
+  const [welcomeMessage, setWelcomeMessage] = useState(group.welcomeMessage ?? '');
+  const [goodbyeMessage, setGoodbyeMessage] = useState(group.goodbyeMessage ?? '');
+  const [rulesText, setRulesText] = useState(group.rulesText ?? '');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     setLocale(group.locale);
     setTimeZone(group.timeZone);
+    setWelcomeMessage(group.welcomeMessage ?? '');
+    setGoodbyeMessage(group.goodbyeMessage ?? '');
+    setRulesText(group.rulesText ?? '');
   }, [group]);
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
@@ -251,9 +258,16 @@ function SettingsView({
     setSaving(true);
     setFeedback(null);
     try {
-      const update = locale === group.locale && timeZone === group.timeZone
-        ? {}
-        : { locale, timeZone };
+      const nextWelcomeMessage = optionalText(welcomeMessage);
+      const nextGoodbyeMessage = optionalText(goodbyeMessage);
+      const nextRulesText = optionalText(rulesText);
+      const update: GroupSettingsUpdate = {
+        ...(locale === group.locale ? {} : { locale }),
+        ...(timeZone === group.timeZone ? {} : { timeZone }),
+        ...(nextWelcomeMessage === group.welcomeMessage ? {} : { welcomeMessage: nextWelcomeMessage }),
+        ...(nextGoodbyeMessage === group.goodbyeMessage ? {} : { goodbyeMessage: nextGoodbyeMessage }),
+        ...(nextRulesText === group.rulesText ? {} : { rulesText: nextRulesText }),
+      };
       if (Object.keys(update).length === 0) {
         setFeedback(messages.saved);
         return;
@@ -297,6 +311,36 @@ function SettingsView({
           </select>
         </label>
         <p className="field-help">{messages.timezoneHelp}</p>
+        <label>
+          <span>{messages.welcomeMessage}</span>
+          <textarea
+            maxLength={4096}
+            rows={4}
+            value={welcomeMessage}
+            onChange={(event) => setWelcomeMessage(event.target.value)}
+          />
+        </label>
+        <p className="field-help">{messages.welcomeHelp}</p>
+        <label>
+          <span>{messages.goodbyeMessage}</span>
+          <textarea
+            maxLength={4096}
+            rows={4}
+            value={goodbyeMessage}
+            onChange={(event) => setGoodbyeMessage(event.target.value)}
+          />
+        </label>
+        <p className="field-help">{messages.goodbyeHelp}</p>
+        <label>
+          <span>{messages.rulesText}</span>
+          <textarea
+            maxLength={3800}
+            rows={7}
+            value={rulesText}
+            onChange={(event) => setRulesText(event.target.value)}
+          />
+        </label>
+        <p className="field-help">{messages.rulesHelp}</p>
         {feedback && <p className="form-feedback" role="status">{feedback}</p>}
         <button className="primary-button" type="submit" disabled={saving}>
           {saving ? messages.saving : messages.save}
@@ -304,6 +348,11 @@ function SettingsView({
       </form>
     </section>
   );
+}
+
+/** Treat whitespace-only content as a deliberate disabled configuration. */
+function optionalText(value: string): string | null {
+  return value.trim().length === 0 ? null : value;
 }
 
 /** Converts API error codes into localized UI copy and hides raw exception text. */

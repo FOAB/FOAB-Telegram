@@ -81,6 +81,9 @@ describe('Mini App settings API', () => {
         locale: 'en-US',
         timeZone: 'UTC',
         settingsRevision: 0,
+        welcomeMessage: null,
+        goodbyeMessage: null,
+        rulesText: null,
       }],
     });
     expect(groups.body).not.toContain(installationId);
@@ -124,7 +127,12 @@ describe('Mini App settings API', () => {
         origin: syntheticOrigin,
         'x-foab-csrf': session.csrfToken,
       },
-      payload: JSON.stringify({ expectedRevision: 0, locale: 'pt-BR' }),
+      payload: JSON.stringify({
+        expectedRevision: 0,
+        locale: 'pt-BR',
+        welcomeMessage: 'Welcome, everyone!',
+        rulesText: 'Be respectful.',
+      }),
     });
     const stale = await app.inject({
       method: 'PATCH',
@@ -140,7 +148,14 @@ describe('Mini App settings API', () => {
 
     expect(update.statusCode).toBe(200);
     expect(JSON.parse(update.body) as unknown).toMatchObject({
-      group: { chatId: primaryChatId.toString(), locale: 'pt-BR', settingsRevision: 1 },
+      group: {
+        chatId: primaryChatId.toString(),
+        locale: 'pt-BR',
+        settingsRevision: 1,
+        welcomeMessage: 'Welcome, everyone!',
+        goodbyeMessage: null,
+        rulesText: 'Be respectful.',
+      },
     });
     expect(stale.statusCode).toBe(409);
     expect(JSON.parse(stale.body) as unknown).toEqual({ error: 'revision_conflict' });
@@ -298,6 +313,9 @@ function createGroup(
     title,
     updatedAt: timestamp,
     username: null,
+    welcomeMessage: null,
+    goodbyeMessage: null,
+    rulesText: null,
   };
 }
 
@@ -328,6 +346,9 @@ class SyntheticGroupStore implements WebAppGroupStore {
       ...group,
       ...(update.locale === undefined ? {} : { locale: update.locale }),
       ...(update.timeZone === undefined ? {} : { timeZone: update.timeZone }),
+      ...(update.welcomeMessage === undefined ? {} : { welcomeMessage: update.welcomeMessage }),
+      ...(update.goodbyeMessage === undefined ? {} : { goodbyeMessage: update.goodbyeMessage }),
+      ...(update.rulesText === undefined ? {} : { rulesText: update.rulesText }),
       settingsRevision: group.settingsRevision + 1,
     };
     const index = this.records.indexOf(group);

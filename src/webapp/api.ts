@@ -7,6 +7,10 @@ import fastify, {
 } from 'fastify';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
+import {
+  GROUP_MESSAGE_MAX_LENGTH,
+  GROUP_RULES_MAX_LENGTH,
+} from '../db/group-repository.js';
 import type {
   GroupRecord,
   GroupSettingsUpdate,
@@ -70,6 +74,9 @@ export interface WebAppGroupResponse {
   readonly locale: string;
   readonly timeZone: string;
   readonly settingsRevision: number;
+  readonly welcomeMessage: string | null;
+  readonly goodbyeMessage: string | null;
+  readonly rulesText: string | null;
 }
 
 /** Creates the schema-validated Mini App API with secure browser boundaries. */
@@ -295,6 +302,9 @@ function toGroupResponse(group: GroupRecord): WebAppGroupResponse {
     locale: group.locale,
     timeZone: group.timeZone,
     settingsRevision: group.settingsRevision,
+    welcomeMessage: group.welcomeMessage,
+    goodbyeMessage: group.goodbyeMessage,
+    rulesText: group.rulesText,
   };
 }
 
@@ -361,7 +371,14 @@ function parseSettingsPatch(value: unknown): {
     return null;
   }
   const keys = Object.keys(value);
-  const allowedKeys = new Set(['expectedRevision', 'locale', 'timeZone']);
+  const allowedKeys = new Set([
+    'expectedRevision',
+    'locale',
+    'timeZone',
+    'welcomeMessage',
+    'goodbyeMessage',
+    'rulesText',
+  ]);
   if (keys.some((key) => !allowedKeys.has(key)) || !keys.includes('expectedRevision')) {
     return null;
   }
@@ -376,29 +393,75 @@ function parseSettingsPatch(value: unknown): {
     return null;
   }
 
-  const localeValue = value['locale'];
-  const timeZoneValue = value['timeZone'];
-  const locale = typeof localeValue === 'string' ? parseSupportedLocale(localeValue) : null;
-  const timeZone = typeof timeZoneValue === 'string' && isSupportedTimeZone(timeZoneValue)
-    ? timeZoneValue
-    : null;
-  if (localeValue !== undefined && locale === null) {
-    return null;
+  const update: {
+    locale?: string;
+    timeZone?: string;
+    welcomeMessage?: string | null;
+    goodbyeMessage?: string | null;
+    rulesText?: string | null;
+  } = {};
+  if (hasOwn(value, 'locale')) {
+    const localeValue = value['locale'];
+    if (typeof localeValue !== 'string') {
+      return null;
+    }
+    const locale = parseSupportedLocale(localeValue);
+    if (locale === null) {
+      return null;
+    }
+    update.locale = locale;
   }
-  if (timeZoneValue !== undefined && timeZone === null) {
-    return null;
-  }
-  if (locale === null && timeZone === null) {
-    return null;
+  if (hasOwn(value, 'timeZone')) {
+    const timeZoneValue = value['timeZone'];
+    if (typeof timeZoneValue !== 'string' || !isSupportedTimeZone(timeZoneValue)) {
+      return null;
+    }
+    update.timeZone = timeZoneValue;
   }
 
-  return {
-    expectedRevision,
-    update: {
-      ...(locale === null ? {} : { locale }),
-      ...(timeZone === null ? {} : { timeZone }),
-    },
-  };
+  const welcomeMessage = parseOptionalTextField(value, 'welcomeMessage', GROUP_MESSAGE_MAX_LENGTH);
+  const goodbyeMessage = parseOptionalTextField(value, 'goodbyeMessage', GROUP_MESSAGE_MAX_LENGTH);
+  const rulesText = parseOptionalTextField(value, 'rulesText', GROUP_RULES_MAX_LENGTH);
+  if (welcomeMessage === null || goodbyeMessage === null || rulesText === null) {
+    return null;
+  }
+  if (welcomeMessage.present) {
+    update.welcomeMessage = welcomeMessage.value;
+  }
+  if (goodbyeMessage.present) {
+    update.goodbyeMessage = goodbyeMessage.value;
+  }
+  if (rulesText.present) {
+    update.rulesText = rulesText.value;
+  }
+  return Object.keys(update).length === 0 ? null : { expectedRevision, update };
+}
+
+type OptionalTextField =
+  | { readonly present: false }
+  | { readonly present: true; readonly value: string | null };
+
+/** Parses one nullable administrator-authored text field with a fixed size limit. */
+function parseOptionalTextField(
+  value: Record<string, unknown>,
+  field: 'welcomeMessage' | 'goodbyeMessage' | 'rulesText',
+  maximumLength: number,
+): OptionalTextField | null {
+  if (!hasOwn(value, field)) {
+    return { present: false };
+  }
+  const fieldValue = value[field];
+  if (fieldValue === null) {
+    return { present: true, value: null };
+  }
+  if (
+    typeof fieldValue !== 'string' ||
+    fieldValue.length > maximumLength ||
+    fieldValue.includes('\u0000')
+  ) {
+    return null;
+  }
+  return { present: true, value: fieldValue.trim().length === 0 ? null : fieldValue };
 }
 
 /** Parses only negative Telegram group IDs within the signed 64-bit range. */
@@ -419,6 +482,11 @@ function parseGroupChatId(value: string): bigint | null {
 /** Allows JSON objects while rejecting arrays and primitive request bodies. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Checks own JSON properties without trusting an object's prototype. */
+function hasOwn(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
 }
 
 /** Preserves only bounded client-error status codes from the framework. */

@@ -35,6 +35,7 @@ export const groupCommandMenu = [
   { command: 'help', description: 'Show available commands', is_ephemeral: true },
   { command: 'ping', description: 'Check whether FOAB is online', is_ephemeral: true },
   { command: 'id', description: 'Show current chat and user IDs', is_ephemeral: true },
+  { command: 'rules', description: 'Show this group\'s rules', is_ephemeral: true },
   { command: 'cancel', description: 'Cancel your active flow', is_ephemeral: true },
 ] satisfies readonly BotCommand[];
 
@@ -79,6 +80,7 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
       { command: 'help', description: 'Mostrar comandos disponíveis', is_ephemeral: true },
       { command: 'ping', description: 'Verificar se o FOAB está online', is_ephemeral: true },
       { command: 'id', description: 'Mostrar IDs do chat e do usuário', is_ephemeral: true },
+      { command: 'rules', description: 'Mostrar as regras deste grupo', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar seu fluxo ativo', is_ephemeral: true },
     ],
     groupAdministratorCommands: [
@@ -86,6 +88,7 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
       { command: 'help', description: 'Mostrar comandos disponíveis', is_ephemeral: true },
       { command: 'ping', description: 'Verificar se o FOAB está online', is_ephemeral: true },
       { command: 'id', description: 'Mostrar IDs do chat e do usuário', is_ephemeral: true },
+      { command: 'rules', description: 'Mostrar as regras deste grupo', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar seu fluxo ativo', is_ephemeral: true },
       { command: 'settings', description: 'Abrir configurações do grupo', is_ephemeral: true },
       { command: 'reload', description: 'Atualizar o estado do grupo no FOAB', is_ephemeral: true },
@@ -107,6 +110,7 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
       { command: 'help', description: 'Mostrar comandos disponibles', is_ephemeral: true },
       { command: 'ping', description: 'Comprobar si FOAB está en línea', is_ephemeral: true },
       { command: 'id', description: 'Mostrar IDs del chat y del usuario', is_ephemeral: true },
+      { command: 'rules', description: 'Mostrar las reglas de este grupo', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar tu flujo activo', is_ephemeral: true },
     ],
     groupAdministratorCommands: [
@@ -114,6 +118,7 @@ export const localizedCommandMenus: readonly LocalizedCommandMenu[] = [
       { command: 'help', description: 'Mostrar comandos disponibles', is_ephemeral: true },
       { command: 'ping', description: 'Comprobar si FOAB está en línea', is_ephemeral: true },
       { command: 'id', description: 'Mostrar IDs del chat y del usuario', is_ephemeral: true },
+      { command: 'rules', description: 'Mostrar las reglas de este grupo', is_ephemeral: true },
       { command: 'cancel', description: 'Cancelar tu flujo activo', is_ephemeral: true },
       { command: 'settings', description: 'Abrir ajustes del grupo', is_ephemeral: true },
       { command: 'reload', description: 'Actualizar el estado del grupo en FOAB', is_ephemeral: true },

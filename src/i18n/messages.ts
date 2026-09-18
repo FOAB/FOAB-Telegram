@@ -8,6 +8,8 @@ export interface MessageCatalog {
   readonly help: string;
   readonly ping: string;
   readonly id: (chatId: string, userId: number) => string;
+  readonly rules: (rulesText: string) => string;
+  readonly rulesNotConfigured: string;
   readonly settingsLanguageButton: string;
   readonly settingsTimeZoneButton: string;
   readonly settingsBackButton: string;
@@ -43,9 +45,11 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     groupStart:
       'FOAB is ready in this group. Use /help to see the commands currently available.',
     help:
-      'Available commands:\n/start — Register this group and show setup guidance.\n/help — Show this help message.\n/ping — Check whether FOAB is online.\n/id — Show the current chat and user IDs.\n/cancel — Cancel your active FOAB flow.',
+      'Available commands:\n/start — Register this group and show setup guidance.\n/help — Show this help message.\n/ping — Check whether FOAB is online.\n/id — Show the current chat and user IDs.\n/rules — Show this group\'s rules.\n/cancel — Cancel your active FOAB flow.',
     ping: 'FOAB is online.',
     id: (chatId, userId) => `Chat ID: ${chatId}\nYour user ID: ${userId}`,
+    rules: (rulesText) => `Group rules:\n\n${rulesText}`,
+    rulesNotConfigured: 'No group rules have been configured.',
     settingsLanguageButton: 'Language',
     settingsTimeZoneButton: 'Time zone',
     settingsBackButton: 'Back',
@@ -83,9 +87,11 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     groupStart:
       'O FOAB está pronto neste grupo. Use /help para ver os comandos disponíveis no momento.',
     help:
-      'Comandos disponíveis:\n/start — Registrar este grupo e mostrar orientações iniciais.\n/help — Mostrar esta ajuda.\n/ping — Verificar se o FOAB está online.\n/id — Mostrar os IDs do chat e do usuário.\n/cancel — Cancelar seu fluxo ativo do FOAB.',
+      'Comandos disponíveis:\n/start — Registrar este grupo e mostrar orientações iniciais.\n/help — Mostrar esta ajuda.\n/ping — Verificar se o FOAB está online.\n/id — Mostrar os IDs do chat e do usuário.\n/rules — Mostrar as regras deste grupo.\n/cancel — Cancelar seu fluxo ativo do FOAB.',
     ping: 'O FOAB está online.',
     id: (chatId, userId) => `ID do chat: ${chatId}\nSeu ID de usuário: ${userId}`,
+    rules: (rulesText) => `Regras do grupo:\n\n${rulesText}`,
+    rulesNotConfigured: 'As regras do grupo ainda não foram configuradas.',
     settingsLanguageButton: 'Idioma',
     settingsTimeZoneButton: 'Fuso horário',
     settingsBackButton: 'Voltar',
@@ -123,9 +129,11 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     groupStart:
       'FOAB está listo en este grupo. Usa /help para ver los comandos disponibles actualmente.',
     help:
-      'Comandos disponibles:\n/start — Registrar este grupo y mostrar instrucciones iniciales.\n/help — Mostrar esta ayuda.\n/ping — Comprobar si FOAB está en línea.\n/id — Mostrar los IDs del chat y del usuario.\n/cancel — Cancelar tu flujo activo de FOAB.',
+      'Comandos disponibles:\n/start — Registrar este grupo y mostrar instrucciones iniciales.\n/help — Mostrar esta ayuda.\n/ping — Comprobar si FOAB está en línea.\n/id — Mostrar los IDs del chat y del usuario.\n/rules — Mostrar las reglas de este grupo.\n/cancel — Cancelar tu flujo activo de FOAB.',
     ping: 'FOAB está en línea.',
     id: (chatId, userId) => `ID del chat: ${chatId}\nTu ID de usuario: ${userId}`,
+    rules: (rulesText) => `Reglas del grupo:\n\n${rulesText}`,
+    rulesNotConfigured: 'Las reglas del grupo todavía no están configuradas.',
     settingsLanguageButton: 'Idioma',
     settingsTimeZoneButton: 'Zona horaria',
     settingsBackButton: 'Volver',

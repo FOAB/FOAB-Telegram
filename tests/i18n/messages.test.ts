@@ -28,5 +28,7 @@ describe('initial message catalogs', () => {
     expect(getHelpMessage('en-US', true)).toContain('/settings');
     expect(getHelpMessage('en-US', true)).toContain('/reload');
     expect(getHelpMessage('en-US', false)).not.toContain('/reload');
+    expect(getMessages('en-US').rules('Be kind.')).toContain('Be kind.');
+    expect(getMessages('pt-BR').rulesNotConfigured).toContain('configuradas');
   });
 });

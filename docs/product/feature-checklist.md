@@ -33,7 +33,7 @@ The product capabilities below remain unfinished unless their own status says ot
 
 ## Content, templates, and automatic replies
 
-- [ ] **F-004 · P1 — Group rules and acceptance.** Versioned text/media/buttons, authorized delivery, optional acceptance tied to a rules revision, and a safe update/reset flow.
+- [ ] **F-004 · P1 — Group rules and acceptance.** Versioned text/media/buttons, authorized delivery, optional acceptance tied to a rules revision, and a safe update/reset flow. **Status: In progress** — bounded rules text can be published through the Mini App and read with ephemeral `/rules`; acceptance, media, buttons, history, and reset flows remain.
 - [ ] **F-005 · P1 — Shared message-template editor.** Placeholders, media/captions, URL buttons, previews, topic and locale selection; escape untrusted values and validate the fully rendered message before delivery.
 - [ ] **F-008 · P2 — Saved notes and reusable content.** Named text/media/buttons, aliases, search/list/get/clear, and visibility rules so private notes never leak to unauthorized members.
 - [ ] **F-009 · P2 — Automatic replies and custom triggers.** One rule system for exact commands, prefixes, words, and phrases such as “what is the Discord?”; support matching mode, alternatives, templates, scope, cooldown, preview, and safe delivery. `/reply` and `/filter` are entry-point aliases to this single capability.
@@ -46,8 +46,8 @@ The product capabilities below remain unfinished unless their own status says ot
 
 ## Greetings
 
-- [ ] **F-006 · P1 — Welcome messages.** Shared templates for group/private delivery, topics, previous-message cleanup, raid batches, and post-challenge admission; deduplicate overlapping join updates and handle unavailable DMs.
-- [ ] **F-007 · P1 — Goodbye messages.** Configurable template, destination, TTL, and distinct voluntary-leave/removal behavior; do not recurse when FOAB itself removes a member.
+- [ ] **F-006 · P1 — Welcome messages.** Shared templates for group/private delivery, topics, previous-message cleanup, raid batches, and post-challenge admission; deduplicate overlapping join updates and handle unavailable DMs. **Status: In progress** — each group can store or clear a bounded welcome message in the Mini App and FOAB sends it for observed new-member events; templates, cleanup, topics, admission integration, and live delivery verification remain.
+- [ ] **F-007 · P1 — Goodbye messages.** Configurable template, destination, TTL, and distinct voluntary-leave/removal behavior; do not recurse when FOAB itself removes a member. **Status: In progress** — each group can store or clear a bounded goodbye message in the Mini App and FOAB sends it for observed member-leave events; templates, cleanup, TTL, removal distinctions, and live delivery verification remain.
 
 ## Moderation cases and sanctions
 
@@ -111,7 +111,7 @@ The product capabilities below remain unfinished unless their own status says ot
 
 - [x] **T-04 — Deployment packaging.** Multi-stage Node 24 image, secret-excluding Docker build context, health check, Dokploy-compatible Compose definition, and English deployment runbook. **Status: Implemented** — Docker and Dokploy runtime behavior still require verification on the target host.
 
-- [ ] **F-060 · P1 — Administration Mini App.** Use the same API and authorization as commands; provide drafts, diff, save, and conflict handling. **Status: In progress** — HTTPS URL gating, private Menu Button and settings-flow launch placement, signed Telegram `initData` verification, a schema-validated API, short-lived server-side sessions, origin/CSRF checks, administrator-filtered group listing, optimistic settings writes, and allowlisted responses exist; the React/Vite UI, durable multi-instance sessions, rate limits, and deployment remain. Inline callback keyboards are the fallback.
+- [ ] **F-060 · P1 — Administration Mini App.** Use the same API and authorization as commands; provide drafts, diff, save, and conflict handling. **Status: In progress** — HTTPS URL gating, private Menu Button and settings-flow launch placement, signed Telegram `initData` verification, a schema-validated API, short-lived server-side sessions, origin/CSRF checks, administrator-filtered group listing, optimistic settings writes for language, time zone, welcome, goodbye, and rules, and allowlisted responses exist; durable multi-instance sessions, rate limits, richer drafts/diffs, browser evidence, and deployment remain. Inline callback keyboards are the fallback.
 - [ ] **F-061 · P2 — Policy simulation and observe mode.** Simulate without Telegram side effects and explain the result against a versioned policy.
 - [ ] **F-065 · P1 — Ephemeral command feedback.** Show private-to-requester responses where the current Telegram method and client support it; retain an appropriate fallback and never mistake ephemeral feedback for group-wide enforcement. **Status: In progress** — `/start`, `/help`, `/ping`, `/id`, `/settings`, `/reload`, and `/cancel` are registered as ephemeral in group menus and reply to the requesting user; private-chat replies remain ordinary messages. Delivery eligibility and supported clients remain unverified, and fail-closed behavior does not publish a public fallback.
 - [ ] **F-066 · P3 — Structured rich messages.** Render supported structured content with a readable text fallback that preserves its meaning.

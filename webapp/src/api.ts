@@ -21,6 +21,18 @@ export interface GroupSettings {
   readonly locale: UiLocale;
   readonly timeZone: string;
   readonly settingsRevision: number;
+  readonly welcomeMessage: string | null;
+  readonly goodbyeMessage: string | null;
+  readonly rulesText: string | null;
+}
+
+/** Allowlisted group settings that the authenticated administrator may edit. */
+export interface GroupSettingsUpdate {
+  readonly locale?: UiLocale;
+  readonly timeZone?: string;
+  readonly welcomeMessage?: string | null;
+  readonly goodbyeMessage?: string | null;
+  readonly rulesText?: string | null;
 }
 
 /** Structured API failure without framework or database details. */
@@ -80,7 +92,7 @@ export class WebAppApiClient {
   /** Applies an allowlisted settings patch using the revision shown by the UI. */
   public async updateSettings(
     group: GroupSettings,
-    update: { readonly locale?: UiLocale; readonly timeZone?: string },
+    update: GroupSettingsUpdate,
   ): Promise<GroupSettings> {
     const csrfToken = this.csrfToken ?? readCookie('foab_csrf');
     if (!csrfToken) {
@@ -165,6 +177,9 @@ function parseGroup(value: unknown): GroupSettings | null {
   const locale = value['locale'];
   const timeZone = value['timeZone'];
   const settingsRevision = value['settingsRevision'];
+  const welcomeMessage = value['welcomeMessage'];
+  const goodbyeMessage = value['goodbyeMessage'];
+  const rulesText = value['rulesText'];
   if (
     typeof chatId !== 'string' ||
     !/^-?[0-9]{1,20}$/u.test(chatId) ||
@@ -176,13 +191,35 @@ function parseGroup(value: unknown): GroupSettings | null {
     typeof locale !== 'string' ||
     !isUiLocale(locale) ||
     typeof timeZone !== 'string' ||
+    !isNullableConfigurationText(welcomeMessage) ||
+    !isNullableConfigurationText(goodbyeMessage) ||
+    !isNullableConfigurationText(rulesText) ||
     typeof settingsRevision !== 'number' ||
     !Number.isSafeInteger(settingsRevision) ||
     settingsRevision < 0
   ) {
     return null;
   }
-  return { chatId, chatType, locale, settingsRevision, timeZone, title };
+  return {
+    chatId,
+    chatType,
+    goodbyeMessage,
+    locale,
+    rulesText,
+    settingsRevision,
+    timeZone,
+    title,
+    welcomeMessage,
+  };
+}
+
+/** Rejects malformed or oversized configuration text returned by the server. */
+function isNullableConfigurationText(value: unknown): value is string | null {
+  return value === null || (
+    typeof value === 'string' &&
+    value.length <= 4_096 &&
+    !value.includes('\u0000')
+  );
 }
 
 /** Narrows the API locale string to the shared UI union. */

@@ -59,7 +59,10 @@ Requires a live session. The server lists active groups in the current installat
       "title": "Primary Group",
       "locale": "en-US",
       "timeZone": "UTC",
-      "settingsRevision": 0
+      "settingsRevision": 0,
+      "welcomeMessage": null,
+      "goodbyeMessage": null,
+      "rulesText": null
     }
   ]
 }
@@ -75,11 +78,14 @@ The body must contain `expectedRevision` and at least one of the following field
 {
   "expectedRevision": 0,
   "locale": "pt-BR",
-  "timeZone": "America/Sao_Paulo"
+  "timeZone": "America/Sao_Paulo",
+  "welcomeMessage": "Welcome to the group!",
+  "goodbyeMessage": null,
+  "rulesText": "Be respectful and keep conversations on topic."
 }
 ```
 
-Supported locales are `en-US`, `pt-BR`, and `es-ES`. Time zones must be bounded IANA names supported by the server ICU data. Unknown fields, private-chat IDs, invalid values, stale revisions, inactive groups, and users who are not current administrators are rejected. A stale revision returns `409` with `{ "error": "revision_conflict" }` so the UI can reload and show the current value before retrying.
+Supported locales are `en-US`, `pt-BR`, and `es-ES`. Time zones must be bounded IANA names supported by the server ICU data. Welcome and goodbye messages accept up to 4,096 characters; rules accept up to 3,800 characters so the `/rules` heading fits within Telegram's message limit. Sending `null` or whitespace-only text clears that feature. Unknown fields, private-chat IDs, invalid values, stale revisions, inactive groups, and users who are not current administrators are rejected. A stale revision returns `409` with `{ "error": "revision_conflict" }` so the UI can reload and show the current value before retrying.
 
 The endpoint returns the same allowlisted group shape after a successful update. It never returns installation identifiers, Telegram membership objects, cookies, credentials, message content, or arbitrary database fields.
 

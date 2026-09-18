@@ -66,6 +66,7 @@ describe('settings command contract', () => {
   it('keeps settings visible to private chats and group administrators only', () => {
     expect(privateCommandMenu.map((command) => command.command)).toContain('settings');
     expect(groupCommandMenu.map((command) => command.command)).not.toContain('settings');
+    expect(groupCommandMenu.map((command) => command.command)).toContain('rules');
     expect(groupAdministratorCommandMenu.map((command) => command.command)).toContain('settings');
     expect(groupAdministratorCommandMenu.map((command) => command.command)).toContain('reload');
     expect(groupAdministratorCommandMenu.map((command) => command.command)).toEqual(
@@ -78,7 +79,7 @@ describe('settings command contract', () => {
       expect(menu.groupCommands.every((command) => command.is_ephemeral === true)).toBe(true);
       expect(menu.groupAdministratorCommands.every((command) => command.is_ephemeral === true)).toBe(true);
       expect(menu.groupAdministratorCommands.map((command) => command.command)).toEqual(
-        expect.arrayContaining(['ping', 'id', 'settings']),
+        expect.arrayContaining(['ping', 'id', 'rules', 'settings']),
       );
       expect(menu.groupAdministratorCommands.map((command) => command.command)).toEqual(
         expect.arrayContaining(['reload']),

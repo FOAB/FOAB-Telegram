@@ -6,7 +6,7 @@ This repository documents the intended product and its current implementation se
 
 ## Project status
 
-The current runnable bot uses strict TypeScript, Node.js 24, grammY, and PostgreSQL. It validates its token and database URL, loads a database-owned installation identity, normalizes supported Telegram updates, records durable update receipts, publishes localized role-scoped command menus, and starts long polling. It records group metadata, the bot's membership state, and the group's language/time-zone settings. Private chats receive ordinary responses; group commands are registered as ephemeral and their responses target only the requesting member.
+The current runnable bot uses strict TypeScript, Node.js 24, grammY, and PostgreSQL. It validates its token and database URL, loads a database-owned installation identity, normalizes supported Telegram updates, records durable update receipts, publishes localized role-scoped command menus, and starts long polling. It records group metadata, the bot's membership state, and versioned group configuration including language, time zone, welcome, goodbye, and rules text. Private chats receive ordinary responses; group commands are registered as ephemeral and their responses target only the requesting member.
 
 Implemented foundation:
 
@@ -14,9 +14,9 @@ Implemented foundation:
 - PostgreSQL schema and reviewed Drizzle migration for installation identity and group metadata, with every group key/query scoped by installation.
 - Separate database migration and runtime roles; the runtime role has data access but no schema or cluster-administration privileges.
 - Automatic group registration from Telegram bot-membership updates and onboarding commands; removing the bot marks that group inactive.
-- Ephemeral group `/start`, `/help`, `/ping`, `/id`, `/settings`, and `/cancel` commands and requester-only ephemeral responses; Telegram delivery and client support are not yet live-tested.
+- Ephemeral group `/start`, `/help`, `/ping`, `/id`, `/rules`, `/settings`, `/reload`, and `/cancel` commands and requester-only ephemeral responses; Telegram delivery and client support are not yet live-tested.
 - Initial en-US, pt-BR, and es-ES onboarding, help, and settings messages, with the group locale defaulting to en-US.
-- Current group-administrator checks for settings, installation/group-scoped settings writes, and optimistic settings revisions.
+- Current group-administrator checks for settings, installation/group-scoped settings writes, optimistic settings revisions, and Mini App configuration for welcome, goodbye, and rules messages.
 - Private `/settings` group selection bound to the authenticated user and installation, with a fresh administrator check before each selected-group write.
 - Typed runtime update projection and installation-scoped inbox leases that suppress duplicate processing without storing raw update bodies.
 - A repeatable local PostgreSQL provisioner and synthetic integration tests for concurrent startup and cross-installation isolation.
@@ -106,7 +106,7 @@ Application safeguards still to implement and test include server-side authoriza
 | Deployment | Container definition available | Multi-stage Node 24 Dockerfile, health endpoint, and Dokploy-compatible Compose file; remote domain, PostgreSQL, TLS, and migration setup remain operator tasks |
 | Durable background work | Planned | PostgreSQL-backed inbox, outbox, and scheduled jobs; Redis/Valkey is not required initially |
 
-The current database slice stores installation identity, group metadata, versioned group language/time-zone settings, and metadata-only update receipts. It does not store message bodies or perform moderation. The settings command checks current authority for the exact group before writing. The inbox lease prevents duplicate update handling; a transactional outbox is still required before durable external effects. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
+The current database slice stores installation identity, group metadata, versioned language/time-zone and administrator-authored welcome/goodbye/rules settings, and metadata-only update receipts. It does not store observed message bodies or perform moderation. The settings command and Mini App API check current authority for the exact group before writing. The inbox lease prevents duplicate update handling; a transactional outbox is still required before durable external effects. See the [database runbook](docs/developer/database.md) and track remaining work in the [feature checklist](docs/product/feature-checklist.md) and [implementation progress](docs/developer/progress.md).
 
 ## Run locally
 
@@ -136,7 +136,7 @@ Start the bot after the local databases are migrated:
 pnpm dev
 ```
 
-On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing the group's language or time zone. When `FOAB_WEB_APP_URL` is configured, FOAB also starts its HTTPS-origin-bound API listener using `FOAB_WEB_APP_HOST` and `FOAB_WEB_APP_PORT`, serves the built Mini App at the configured URL path, and sets the private-chat Menu Button to open the Mini App. Inline settings buttons remain available as the fallback. Groups use only requester-targeted ephemeral command responses and inline callback buttons. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
+On startup, the bot publishes its current localized command menus through Telegram's Bot API and begins long polling. Adding it to a group or sending a group command registers that group; leaving/removing the bot marks it inactive. `/settings` checks the invoking user's current Telegram administrator status in that exact group before changing group configuration. When `FOAB_WEB_APP_URL` is configured, FOAB also starts its HTTPS-origin-bound API listener using `FOAB_WEB_APP_HOST` and `FOAB_WEB_APP_PORT`, serves the built Mini App at the configured URL path, and sets the private-chat Menu Button to open the Mini App. Inline settings buttons remain available as the fallback. Groups use requester-targeted ephemeral command responses and inline callback buttons; configured welcome and goodbye messages are delivered as ordinary group messages. The bot does not read message history or execute moderation. Stop it with `Ctrl+C`. Do not use a production token for development. The code has not yet been exercised against a live Telegram test group.
 
 ## Checks
 

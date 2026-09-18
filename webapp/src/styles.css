@@ -29,7 +29,8 @@ body {
 }
 
 button,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -271,7 +272,8 @@ button:disabled {
   font-weight: 650;
 }
 
-.settings-form select {
+.settings-form select,
+.settings-form textarea {
   width: 100%;
   min-height: 46px;
   padding: 0 12px;
@@ -280,6 +282,12 @@ button:disabled {
   border-radius: 10px;
   background: var(--foab-secondary-bg-color);
   color: var(--foab-text-color);
+}
+
+.settings-form textarea {
+  min-height: 112px;
+  padding-top: 10px;
+  resize: vertical;
 }
 
 .field-help,

@@ -46,12 +46,13 @@ export type BotChatType = 'private' | 'group' | 'supergroup' | 'channel';
 export interface BotLogFields {
   readonly updateKind?: BotUpdateKind;
   readonly chatType?: BotChatType;
-  readonly command?: 'start' | 'help' | 'ping' | 'id' | 'settings' | 'reload' | 'cancel';
+  readonly command?: 'start' | 'help' | 'ping' | 'id' | 'rules' | 'settings' | 'reload' | 'cancel';
   readonly inboxClaimed?: boolean;
   readonly observedGroup?: boolean;
   readonly groupActive?: boolean;
   readonly adminCheck?: boolean;
   readonly reloadSucceeded?: boolean;
+  readonly automatedMessage?: 'welcome' | 'goodbye';
   readonly botStatus?: BotGroupStatus;
   readonly membershipActive?: boolean;
 }
@@ -179,6 +180,37 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     });
   });
 
+  bot.on('message:new_chat_members', async (context) => {
+    const group = await observeCurrentGroup(context, dependencies);
+    if (!group?.isActive || group.welcomeMessage === null) {
+      return;
+    }
+    if (context.message.new_chat_members.some((member) => member.id === context.me.id)) {
+      return;
+    }
+    await context.reply(group.welcomeMessage);
+    dependencies.logger?.info('telegram_welcome_message_sent', {
+      chatType: group.chatType,
+      observedGroup: true,
+      groupActive: true,
+      automatedMessage: 'welcome',
+    });
+  });
+
+  bot.on('message:left_chat_member', async (context) => {
+    const group = await observeCurrentGroup(context, dependencies);
+    if (!group?.isActive || group.goodbyeMessage === null || context.message.left_chat_member.is_bot) {
+      return;
+    }
+    await context.reply(group.goodbyeMessage);
+    dependencies.logger?.info('telegram_goodbye_message_sent', {
+      chatType: group.chatType,
+      observedGroup: true,
+      groupActive: true,
+      automatedMessage: 'goodbye',
+    });
+  });
+
   bot.command('start', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
     const locale = group
@@ -219,6 +251,20 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       ? supportedLocale(group.locale)
       : localeFromTelegram(sender.language_code);
     await replyToCommand(context, getMessages(locale).id(String(chat.id), sender.id));
+  });
+
+  bot.command('rules', async (context) => {
+    const group = await observeCurrentGroup(context, dependencies);
+    const locale = group
+      ? supportedLocale(group.locale)
+      : localeFromTelegram(context.from?.language_code);
+    const messages = getMessages(locale);
+    await replyToCommand(
+      context,
+      group?.isActive && group.rulesText !== null
+        ? messages.rules(group.rulesText)
+        : messages.rulesNotConfigured,
+    );
   });
 
   bot.on('callback_query:data', async (context) => {
