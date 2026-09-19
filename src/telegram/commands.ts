@@ -24,7 +24,7 @@ export function privateMenuButton(webAppUrl: string | null): MenuButton {
 
   return {
     type: 'web_app',
-    text: 'FOAB',
+    text: 'OPEN',
     web_app: { url: webAppUrl },
   };
 }

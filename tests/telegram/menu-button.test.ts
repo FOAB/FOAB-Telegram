@@ -9,7 +9,7 @@ describe('private Mini App menu button', () => {
   it('uses the Mini App as the primary private administration entry point', () => {
     expect(privateMenuButton('https://admin.example.invalid/foab')).toEqual({
       type: 'web_app',
-      text: 'FOAB',
+      text: 'OPEN',
       web_app: { url: 'https://admin.example.invalid/foab' },
     });
   });
