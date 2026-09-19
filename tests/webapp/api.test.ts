@@ -78,6 +78,7 @@ describe('Mini App settings API', () => {
         chatId: primaryChatId.toString(),
         chatType: 'supergroup',
         title: 'Primary Group',
+        username: null,
         locale: 'en-US',
         timeZone: 'UTC',
         settingsRevision: 0,

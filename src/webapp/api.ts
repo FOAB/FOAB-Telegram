@@ -72,6 +72,7 @@ export interface WebAppGroupResponse {
   readonly chatId: string;
   readonly chatType: GroupRecord['chatType'];
   readonly title: string;
+  readonly username: string | null;
   readonly locale: string;
   readonly timeZone: string;
   readonly settingsRevision: number;
@@ -304,6 +305,7 @@ function toGroupResponse(group: GroupRecord): WebAppGroupResponse {
     chatId: group.telegramChatId.toString(),
     chatType: group.chatType,
     title: group.title,
+    username: group.username,
     locale: group.locale,
     timeZone: group.timeZone,
     settingsRevision: group.settingsRevision,

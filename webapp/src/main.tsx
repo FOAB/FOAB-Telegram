@@ -20,8 +20,11 @@ import {
 import {
   IconArrowLeft,
   IconChevronRight,
+  IconDoorExit,
+  IconFileText,
   IconListCheck,
   IconMessage,
+  IconSearch,
   IconSettings,
   IconX,
 } from '@tabler/icons-react';
@@ -224,9 +227,35 @@ function GroupsView({
   readonly onReload: () => void;
   readonly onSelect: (chatId: string) => void;
 }): ReactElement {
+  const [searchQuery, setSearchQuery] = useState('');
+  const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase();
+  const visibleGroups = useMemo(() => {
+    if (normalizedSearchQuery.length === 0) {
+      return groups;
+    }
+    return groups.filter((group) => {
+      const searchableText = [
+        group.title,
+        group.username ?? '',
+        messages.groupType(group.chatType),
+      ].join(' ').toLocaleLowerCase();
+      return searchableText.includes(normalizedSearchQuery);
+    });
+  }, [groups, messages, normalizedSearchQuery]);
+
   return (
     <section className="content-section" aria-labelledby="groups-title">
-      <div className="section-heading">
+      <label className="group-search">
+        <IconSearch aria-hidden="true" size={20} stroke={1.8} />
+        <span className="sr-only">{messages.searchGroups}</span>
+        <input
+          type="search"
+          value={searchQuery}
+          placeholder={messages.searchGroups}
+          onChange={(event) => setSearchQuery(event.target.value)}
+        />
+      </label>
+      <div className="section-heading group-section-heading">
         <div>
           <h2 id="groups-title">{messages.groupsTitle}</h2>
           <p>{messages.groupsSubtitle}</p>
@@ -235,9 +264,11 @@ function GroupsView({
       </div>
       {groups.length === 0 ? (
         <p className="status-card">{messages.noGroups}</p>
+      ) : visibleGroups.length === 0 ? (
+        <p className="status-card">{messages.noGroupMatches}</p>
       ) : (
         <div className="settings-list group-list">
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <button
               className="settings-list-row group-list-row"
               key={group.chatId}
@@ -247,7 +278,7 @@ function GroupsView({
               <div className="group-icon" aria-hidden="true">{group.title.slice(0, 1).toUpperCase()}</div>
               <span className="settings-list-row-copy">
                 <strong>{group.title}</strong>
-                <span>{messages.groupType(group.chatType)}</span>
+                <span>{group.username ? `@${group.username}` : messages.groupType(group.chatType)}</span>
               </span>
               <IconChevronRight className="settings-list-row-chevron" aria-hidden="true" size={22} stroke={1.7} />
             </button>
@@ -455,15 +486,24 @@ function SettingsHomeView({
         </div>
       </div>
       <p className="settings-home-subtitle">{messages.settingsHomeSubtitle}</p>
-      <div className="list-section-heading">
-        <h3>{messages.settingsListTitle}</h3>
+      <div className="settings-list-group">
+        <div className="list-section-heading">
+          <h3>{messages.settingsListTitle}</h3>
+        </div>
+        <nav className="settings-list" aria-label={messages.settingsListTitle}>
+          <SettingsListRow icon={<IconSettings aria-hidden="true" size={22} stroke={1.7} />} title={messages.generalTitle} summary={messages.generalHelp} onClick={() => onOpen('general')} />
+        </nav>
       </div>
-      <nav className="settings-list" aria-label={messages.settingsTitle}>
-        <SettingsListRow icon={<IconSettings aria-hidden="true" size={24} stroke={1.7} />} title={messages.generalTitle} summary={messages.generalHelp} onClick={() => onOpen('general')} />
-        <SettingsListRow icon={<IconMessage aria-hidden="true" size={24} stroke={1.7} />} title={messages.welcomeMessage} summary={messages.welcomeDescription} meta={<StatusChip configured={optionalText(group.welcomeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('welcome')} />
-        <SettingsListRow icon={<IconListCheck aria-hidden="true" size={24} stroke={1.7} />} title={messages.rulesTitle} summary={messages.rulesCategoryHelp} onClick={() => onOpen('rules')} />
-        <SettingsListRow icon={<IconMessage aria-hidden="true" size={24} stroke={1.7} />} title={messages.goodbyeMessage} summary={messages.goodbyeDescription} meta={<StatusChip configured={optionalText(group.goodbyeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('goodbye')} />
-      </nav>
+      <div className="settings-list-group">
+        <div className="list-section-heading">
+          <h3>{messages.messagesSectionTitle}</h3>
+        </div>
+        <nav className="settings-list" aria-label={messages.messagesSectionTitle}>
+          <SettingsListRow icon={<IconMessage aria-hidden="true" size={22} stroke={1.7} />} title={messages.welcomeMessage} summary={messages.welcomeDescription} meta={<StatusChip configured={optionalText(group.welcomeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('welcome')} />
+          <SettingsListRow icon={<IconFileText aria-hidden="true" size={22} stroke={1.7} />} title={messages.rulesTitle} summary={messages.rulesCategoryHelp} onClick={() => onOpen('rules')} />
+          <SettingsListRow icon={<IconDoorExit aria-hidden="true" size={22} stroke={1.7} />} title={messages.goodbyeMessage} summary={messages.goodbyeDescription} meta={<StatusChip configured={optionalText(group.goodbyeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('goodbye')} />
+        </nav>
+      </div>
     </section>
   );
 }

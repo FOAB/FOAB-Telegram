@@ -57,6 +57,7 @@ Requires a live session. The server lists active groups in the current installat
       "chatId": "-100100000001",
       "chatType": "supergroup",
       "title": "Primary Group",
+      "username": "primary_group",
       "locale": "en-US",
       "timeZone": "UTC",
       "settingsRevision": 0,

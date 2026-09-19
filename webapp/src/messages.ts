@@ -11,13 +11,16 @@ export interface UiMessages {
   readonly retry: string;
   readonly groupsTitle: string;
   readonly groupsSubtitle: string;
+  readonly searchGroups: string;
   readonly noGroups: string;
+  readonly noGroupMatches: string;
   readonly groupType: (type: 'group' | 'supergroup') => string;
   readonly settingsTitle: string;
   readonly settingsHomeSubtitle: string;
   readonly settingsListTitle: string;
   readonly generalTitle: string;
   readonly generalHelp: string;
+  readonly messagesSectionTitle: string;
   readonly rulesTitle: string;
   readonly rulesCategoryHelp: string;
   readonly language: string;
@@ -71,13 +74,16 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     retry: 'Try again',
     groupsTitle: 'Your groups',
     groupsSubtitle: 'Choose a group to manage its shared settings.',
+    searchGroups: 'Search',
     noGroups: 'No active group was found where your administrator access could be confirmed.',
+    noGroupMatches: 'No group matches this search.',
     groupType: (type) => type === 'supergroup' ? 'Supergroup' : 'Group',
     settingsTitle: 'Group settings',
     settingsHomeSubtitle: 'Choose a category to manage this group.',
     settingsListTitle: 'Settings',
     generalTitle: 'General',
     generalHelp: 'Language and time zone',
+    messagesSectionTitle: 'Messages',
     rulesTitle: 'Rules',
     rulesCategoryHelp: 'Publish the rules members can read',
     language: 'Language',
@@ -129,13 +135,16 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     retry: 'Tentar novamente',
     groupsTitle: 'Seus grupos',
     groupsSubtitle: 'Escolha um grupo para gerenciar suas configurações compartilhadas.',
+    searchGroups: 'Pesquisar',
     noGroups: 'Não foi encontrado um grupo ativo onde seu acesso de administrador pudesse ser confirmado.',
+    noGroupMatches: 'Nenhum grupo corresponde a esta pesquisa.',
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
     settingsTitle: 'Configurações do grupo',
     settingsHomeSubtitle: 'Escolha uma categoria para gerenciar este grupo.',
     settingsListTitle: 'Configurações',
     generalTitle: 'Geral',
     generalHelp: 'Idioma e fuso horário',
+    messagesSectionTitle: 'Mensagens',
     rulesTitle: 'Regras',
     rulesCategoryHelp: 'Publique as regras que os membros podem consultar',
     language: 'Idioma',
@@ -187,13 +196,16 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     retry: 'Intentar de nuevo',
     groupsTitle: 'Tus grupos',
     groupsSubtitle: 'Elige un grupo para administrar sus ajustes compartidos.',
+    searchGroups: 'Buscar',
     noGroups: 'No se encontró un grupo activo donde se pudiera confirmar tu acceso de administrador.',
+    noGroupMatches: 'Ningún grupo coincide con esta búsqueda.',
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
     settingsTitle: 'Ajustes del grupo',
     settingsHomeSubtitle: 'Elige una categoría para administrar este grupo.',
     settingsListTitle: 'Ajustes',
     generalTitle: 'General',
     generalHelp: 'Idioma y zona horaria',
+    messagesSectionTitle: 'Mensajes',
     rulesTitle: 'Reglas',
     rulesCategoryHelp: 'Publica las reglas que pueden consultar los miembros',
     language: 'Idioma',

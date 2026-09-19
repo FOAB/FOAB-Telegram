@@ -20,6 +20,7 @@ export interface GroupSettings {
   readonly chatId: string;
   readonly chatType: 'group' | 'supergroup';
   readonly title: string;
+  readonly username: string | null;
   readonly locale: UiLocale;
   readonly timeZone: string;
   readonly settingsRevision: number;
@@ -184,6 +185,7 @@ function parseGroup(value: unknown): GroupSettings | null {
   const chatId = value['chatId'];
   const chatType = value['chatType'];
   const title = value['title'];
+  const username = value['username'];
   const locale = value['locale'];
   const timeZone = value['timeZone'];
   const settingsRevision = value['settingsRevision'];
@@ -202,6 +204,7 @@ function parseGroup(value: unknown): GroupSettings | null {
     !chatId.startsWith('-') ||
     (chatType !== 'group' && chatType !== 'supergroup') ||
     typeof title !== 'string' ||
+    (username !== null && typeof username !== 'string') ||
     typeof locale !== 'string' ||
     !isUiLocale(locale) ||
     typeof timeZone !== 'string' ||
@@ -229,6 +232,7 @@ function parseGroup(value: unknown): GroupSettings | null {
     settingsRevision,
     timeZone,
     title,
+    username,
     welcomeMessage,
     welcomeMode,
     deletePreviousWelcomeMessage,
