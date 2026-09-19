@@ -245,16 +245,27 @@ function GroupsView({
 
   return (
     <section className="content-section" aria-labelledby="groups-title">
-      <label className="group-search">
-        <IconSearch aria-hidden="true" size={20} stroke={1.8} />
-        <span className="sr-only">{messages.searchGroups}</span>
+      <div className="group-search">
+        <IconSearch aria-hidden="true" size={18} stroke={1.8} />
+        <label className="sr-only" htmlFor="group-search-input">{messages.searchGroups}</label>
         <input
+          id="group-search-input"
           type="search"
           value={searchQuery}
           placeholder={messages.searchGroups}
           onChange={(event) => setSearchQuery(event.target.value)}
         />
-      </label>
+        {searchQuery.length > 0 && (
+          <button
+            className="group-search-clear"
+            type="button"
+            aria-label={messages.clearSearch}
+            onClick={() => setSearchQuery('')}
+          >
+            <IconX aria-hidden="true" size={18} stroke={1.8} />
+          </button>
+        )}
+      </div>
       <div className="section-heading group-section-heading">
         <div>
           <h2 id="groups-title">{messages.groupsTitle}</h2>

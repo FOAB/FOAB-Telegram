@@ -12,6 +12,7 @@ export interface UiMessages {
   readonly groupsTitle: string;
   readonly groupsSubtitle: string;
   readonly searchGroups: string;
+  readonly clearSearch: string;
   readonly noGroups: string;
   readonly noGroupMatches: string;
   readonly groupType: (type: 'group' | 'supergroup') => string;
@@ -75,6 +76,7 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupsTitle: 'Your groups',
     groupsSubtitle: 'Choose a group to manage its shared settings.',
     searchGroups: 'Search',
+    clearSearch: 'Clear search',
     noGroups: 'No active group was found where your administrator access could be confirmed.',
     noGroupMatches: 'No group matches this search.',
     groupType: (type) => type === 'supergroup' ? 'Supergroup' : 'Group',
@@ -136,6 +138,7 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupsTitle: 'Seus grupos',
     groupsSubtitle: 'Escolha um grupo para gerenciar suas configurações compartilhadas.',
     searchGroups: 'Pesquisar',
+    clearSearch: 'Limpar pesquisa',
     noGroups: 'Não foi encontrado um grupo ativo onde seu acesso de administrador pudesse ser confirmado.',
     noGroupMatches: 'Nenhum grupo corresponde a esta pesquisa.',
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
@@ -197,6 +200,7 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupsTitle: 'Tus grupos',
     groupsSubtitle: 'Elige un grupo para administrar sus ajustes compartidos.',
     searchGroups: 'Buscar',
+    clearSearch: 'Borrar búsqueda',
     noGroups: 'No se encontró un grupo activo donde se pudiera confirmar tu acceso de administrador.',
     noGroupMatches: 'Ningún grupo coincide con esta búsqueda.',
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',

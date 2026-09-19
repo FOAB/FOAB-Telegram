@@ -138,9 +138,9 @@ button:disabled {
   align-items: center;
   gap: 10px;
   min-height: 42px;
-  padding: 0 13px;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--foab-card-color) 92%, #0e151d);
+  padding: 0 12px 0 14px;
+  border-radius: 8px;
+  background: #202b36;
   color: var(--foab-muted-color);
 }
 
@@ -160,9 +160,43 @@ button:disabled {
   font-size: 14px;
 }
 
+.group-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
 .group-search input::placeholder {
   color: var(--foab-muted-color);
   opacity: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.group-search-clear {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--foab-muted-color);
+}
+
+.group-search-clear:hover,
+.group-search-clear:focus-visible {
+  background: color-mix(in srgb, var(--foab-muted-color) 16%, transparent);
+  color: var(--foab-text-color);
 }
 
 .group-section-heading {
