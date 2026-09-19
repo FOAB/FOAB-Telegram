@@ -5,6 +5,8 @@
 - Source screenshot: `C:\Users\louan\AppData\Local\Temp\codex-clipboard-cee04a00-76a7-4442-a6c8-ff8ad19b6321.png`
 - Source state: authenticated group settings form in the Telegram Mini App, pt-BR locale, narrow mobile viewport.
 - Source dimensions: 461 × 709 pixels. Device pixel ratio was not available in the attachment metadata.
+- Reference screenshots: `C:\Users\louan\Documents\Git\FOAB-Telegram\.codex-remote-attachments\01a0a818-6f4e-7a60-8bfa-ed9f95a8959b\a1370d15-e85a-49aa-b77b-51ee416da207\1-Photo-1.jpg` and `C:\Users\louan\Documents\Git\FOAB-Telegram\.codex-remote-attachments\01a0a818-6f4e-7a60-8bfa-ed9f95a8959b\a1370d15-e85a-49aa-b77b-51ee416da207\2-Photo-2.jpg`
+- Reference pattern: BotFather grouped lists with section headings, consistent rows, a leading icon or avatar, title and supporting text, and a trailing chevron.
 
 ## Implementation evidence
 
@@ -15,14 +17,14 @@
 
 ## Comparison
 
-The source shows the previous single long form. The implementation now has a group settings menu with separate General, Messages, and Rules category actions. Messages opens a second menu with separate Welcome and Goodbye feature cards; each feature then opens a focused status and editor view. The local browser confirmed the shell renders and the error state is readable, but it could not provide a same-state authenticated capture for the new category menu.
+The source shows the previous single long form. The implementation now has a group list and group settings menu built from the BotFather-style grouped-list pattern. Groups, General, Messages, Rules, Welcome, and Goodbye use one full-row interaction with a leading avatar or line icon, supporting text, optional status chip, and trailing chevron. Each row continues to open the existing focused settings or editor view. The local browser confirmed the shell renders and the error state is readable, but it could not provide a same-state authenticated capture for the new category menu.
 
 The following surfaces were checked against the existing Telegram-like tokens and the attached reference:
 
 - Typography: system sans-serif, bold section hierarchy, and muted helper text are preserved.
-- Spacing and layout: the long form is split into touch-sized category cards and focused forms with consistent gaps and rounded containers.
+- Spacing and layout: the long form is split into sectioned, touch-sized grouped lists and focused forms with consistent row heights, dividers, and rounded containers.
 - Colors and tokens: the existing dark Telegram palette and blue accent remain in use.
-- Image quality and assets: the reference uses the existing FOAB group mark; no new decorative image asset was required for this navigation pass.
+- Image quality and assets: the references use compact avatars and line icons; the implementation reuses the FOAB group mark and Tabler icons without adding decorative image assets.
 - Copy and content: the new navigation copy is present in en-US, pt-BR, and es-ES catalogs.
 
 ## Findings

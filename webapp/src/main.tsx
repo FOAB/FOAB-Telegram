@@ -236,18 +236,21 @@ function GroupsView({
       {groups.length === 0 ? (
         <p className="status-card">{messages.noGroups}</p>
       ) : (
-        <div className="group-list">
+        <div className="settings-list group-list">
           {groups.map((group) => (
-            <article className="group-card" key={group.chatId}>
+            <button
+              className="settings-list-row group-list-row"
+              key={group.chatId}
+              type="button"
+              onClick={() => onSelect(group.chatId)}
+            >
               <div className="group-icon" aria-hidden="true">{group.title.slice(0, 1).toUpperCase()}</div>
-              <div className="group-card-content">
-                <h3>{group.title}</h3>
-                <p>{messages.groupType(group.chatType)}</p>
-              </div>
-              <button className="secondary-button" type="button" onClick={() => onSelect(group.chatId)}>
-                {messages.configure}
-              </button>
-            </article>
+              <span className="settings-list-row-copy">
+                <strong>{group.title}</strong>
+                <span>{messages.groupType(group.chatType)}</span>
+              </span>
+              <IconChevronRight className="settings-list-row-chevron" aria-hidden="true" size={22} stroke={1.7} />
+            </button>
           ))}
         </div>
       )}
@@ -443,10 +446,13 @@ function SettingsHomeView({
         </div>
       </div>
       <p className="settings-home-subtitle">{messages.settingsHomeSubtitle}</p>
-      <nav className="settings-category-list" aria-label={messages.settingsTitle}>
-        <CategoryButton icon={<IconSettings aria-hidden="true" size={22} stroke={1.8} />} title={messages.generalTitle} summary={messages.generalHelp} openLabel={messages.open} onClick={() => onOpen('general')} />
-        <CategoryButton icon={<IconMessage aria-hidden="true" size={22} stroke={1.8} />} title={messages.messagesTitle} summary={messages.messagesHelp} openLabel={messages.open} onClick={() => onOpen('messages')} />
-        <CategoryButton icon={<IconListCheck aria-hidden="true" size={22} stroke={1.8} />} title={messages.rulesTitle} summary={messages.rulesCategoryHelp} openLabel={messages.open} onClick={() => onOpen('rules')} />
+      <div className="list-section-heading">
+        <h3>{messages.settingsListTitle}</h3>
+      </div>
+      <nav className="settings-list" aria-label={messages.settingsTitle}>
+        <SettingsListRow icon={<IconSettings aria-hidden="true" size={24} stroke={1.7} />} title={messages.generalTitle} summary={messages.generalHelp} onClick={() => onOpen('general')} />
+        <SettingsListRow icon={<IconMessage aria-hidden="true" size={24} stroke={1.7} />} title={messages.messagesTitle} summary={messages.messagesHelp} onClick={() => onOpen('messages')} />
+        <SettingsListRow icon={<IconListCheck aria-hidden="true" size={24} stroke={1.7} />} title={messages.rulesTitle} summary={messages.rulesCategoryHelp} onClick={() => onOpen('rules')} />
       </nav>
     </section>
   );
@@ -480,60 +486,68 @@ function MessagesHomeView({
         </div>
       </div>
       <p className="settings-home-subtitle">{messages.messagesHomeSubtitle}</p>
-      <div className="feature-list">
-        <FeatureCard
+      <div className="list-section-heading">
+        <h3>{messages.messageFeaturesListTitle}</h3>
+      </div>
+      <div className="settings-list">
+        <SettingsListRow
           icon={<IconMessage aria-hidden="true" size={22} stroke={1.8} />}
           title={messages.welcomeMessage}
-          description={messages.welcomeDescription}
-          configured={optionalText(group.welcomeMessage ?? '') !== null}
-          messages={messages}
-          onOpen={() => onOpen('welcome')}
+          summary={messages.welcomeDescription}
+          meta={<StatusChip configured={optionalText(group.welcomeMessage ?? '') !== null} messages={messages} />}
+          onClick={() => onOpen('welcome')}
         />
-        <FeatureCard
+        <SettingsListRow
           icon={<IconMessage aria-hidden="true" size={22} stroke={1.8} />}
           title={messages.goodbyeMessage}
-          description={messages.goodbyeDescription}
-          configured={optionalText(group.goodbyeMessage ?? '') !== null}
-          messages={messages}
-          onOpen={() => onOpen('goodbye')}
+          summary={messages.goodbyeDescription}
+          meta={<StatusChip configured={optionalText(group.goodbyeMessage ?? '') !== null} messages={messages} />}
+          onClick={() => onOpen('goodbye')}
         />
       </div>
     </section>
   );
 }
 
-/** Shows a compact status card for one configurable message feature. */
-function FeatureCard({
-  icon,
-  title,
-  description,
+/** Renders one compact status chip for a configurable message feature. */
+function StatusChip({
   configured,
   messages,
-  onOpen,
+}: {
+  readonly configured: boolean;
+  readonly messages: ReturnType<typeof getUiMessages>;
+}): ReactElement {
+  return (
+    <span className={`status-chip ${configured ? 'status-chip-active' : 'status-chip-inactive'}`}>
+      {configured ? messages.enabled : messages.disabled}
+    </span>
+  );
+}
+
+/** Renders one BotFather-style navigation row with a single interactive target. */
+function SettingsListRow({
+  icon,
+  title,
+  summary,
+  meta,
+  onClick,
 }: {
   readonly icon: ReactElement;
   readonly title: string;
-  readonly description: string;
-  readonly configured: boolean;
-  readonly messages: ReturnType<typeof getUiMessages>;
-  readonly onOpen: () => void;
+  readonly summary?: string;
+  readonly meta?: ReactNode;
+  readonly onClick: () => void;
 }): ReactElement {
   return (
-    <article className="feature-card">
-      <div className="feature-card-heading">
-        <span className="settings-category-icon">{icon}</span>
-        <div>
-          <h3>{title}</h3>
-          <p>{description}</p>
-        </div>
-      </div>
-      <div className="feature-card-footer">
-        <span className={`status-chip ${configured ? 'status-chip-active' : 'status-chip-inactive'}`}>
-          {configured ? messages.enabled : messages.disabled}
-        </span>
-        <button className="secondary-button" type="button" onClick={onOpen}>{messages.open}</button>
-      </div>
-    </article>
+    <button className="settings-list-row" type="button" onClick={onClick}>
+      <span className="settings-list-row-icon">{icon}</span>
+      <span className="settings-list-row-copy">
+        <strong>{title}</strong>
+        {summary && <span>{summary}</span>}
+      </span>
+      {meta && <span className="settings-list-row-meta">{meta}</span>}
+      <IconChevronRight className="settings-list-row-chevron" aria-hidden="true" size={22} stroke={1.7} />
+    </button>
   );
 }
 
@@ -636,35 +650,6 @@ function MessageFeatureView({
       )}
       {!editorOpen && feedback && <p className="form-feedback" role="status">{feedback}</p>}
     </section>
-  );
-}
-
-/** Renders one large, touch-friendly category action in the group menu. */
-function CategoryButton({
-  icon,
-  title,
-  summary,
-  openLabel,
-  onClick,
-}: {
-  readonly icon: ReactElement;
-  readonly title: string;
-  readonly summary: string;
-  readonly openLabel: string;
-  readonly onClick: () => void;
-}): ReactElement {
-  return (
-    <button className="settings-category" type="button" onClick={onClick}>
-      <span className="settings-category-icon">{icon}</span>
-      <span className="settings-category-copy">
-        <strong>{title}</strong>
-        <span>{summary}</span>
-      </span>
-      <span className="settings-category-action">
-        <span>{openLabel}</span>
-        <IconChevronRight aria-hidden="true" size={18} stroke={1.8} />
-      </span>
-    </button>
   );
 }
 

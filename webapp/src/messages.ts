@@ -16,11 +16,13 @@ export interface UiMessages {
   readonly configure: string;
   readonly settingsTitle: string;
   readonly settingsHomeSubtitle: string;
+  readonly settingsListTitle: string;
   readonly generalTitle: string;
   readonly generalHelp: string;
   readonly messagesTitle: string;
   readonly messagesHelp: string;
   readonly messagesHomeSubtitle: string;
+  readonly messageFeaturesListTitle: string;
   readonly rulesTitle: string;
   readonly rulesCategoryHelp: string;
   readonly language: string;
@@ -76,11 +78,13 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     configure: 'Configure',
     settingsTitle: 'Group settings',
     settingsHomeSubtitle: 'Choose a category to manage this group.',
+    settingsListTitle: 'Settings',
     generalTitle: 'General',
     generalHelp: 'Language and time zone',
     messagesTitle: 'Messages',
     messagesHelp: 'Welcome and goodbye messages',
     messagesHomeSubtitle: 'Choose a message feature to view its status and actions.',
+    messageFeaturesListTitle: 'Message features',
     rulesTitle: 'Rules',
     rulesCategoryHelp: 'Publish the rules members can read',
     language: 'Language',
@@ -134,11 +138,13 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     configure: 'Configurar',
     settingsTitle: 'Configurações do grupo',
     settingsHomeSubtitle: 'Escolha uma categoria para gerenciar este grupo.',
+    settingsListTitle: 'Configurações',
     generalTitle: 'Geral',
     generalHelp: 'Idioma e fuso horário',
     messagesTitle: 'Mensagens',
     messagesHelp: 'Mensagens de boas-vindas e despedida',
     messagesHomeSubtitle: 'Escolha um recurso para ver o status e as ações disponíveis.',
+    messageFeaturesListTitle: 'Recursos de mensagens',
     rulesTitle: 'Regras',
     rulesCategoryHelp: 'Publique as regras que os membros podem consultar',
     language: 'Idioma',
@@ -192,11 +198,13 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     configure: 'Configurar',
     settingsTitle: 'Ajustes del grupo',
     settingsHomeSubtitle: 'Elige una categoría para administrar este grupo.',
+    settingsListTitle: 'Ajustes',
     generalTitle: 'General',
     generalHelp: 'Idioma y zona horaria',
     messagesTitle: 'Mensajes',
     messagesHelp: 'Mensajes de bienvenida y despedida',
     messagesHomeSubtitle: 'Elige un recurso para ver su estado y sus acciones disponibles.',
+    messageFeaturesListTitle: 'Funciones de mensajes',
     rulesTitle: 'Reglas',
     rulesCategoryHelp: 'Publica las reglas que pueden consultar los miembros',
     language: 'Idioma',

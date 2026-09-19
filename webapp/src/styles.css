@@ -102,8 +102,8 @@ button:disabled {
 .section-heading p,
 .settings-heading h2,
 .settings-heading p,
-.group-card h3,
-.group-card p {
+.settings-list-row-copy strong,
+.settings-list-row-copy span {
   margin: 0;
 }
 
@@ -115,7 +115,6 @@ button:disabled {
 .app-header p,
 .section-heading p,
 .settings-heading p,
-.group-card p,
 .field-help {
   color: var(--foab-muted-color);
   font-size: 14px;
@@ -141,31 +140,7 @@ button:disabled {
 }
 
 .group-list {
-  display: grid;
-  gap: 10px;
-}
-
-.group-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid rgba(145, 163, 181, 0.18);
-  border-color: color-mix(in srgb, var(--foab-muted-color) 18%, transparent);
-  border-radius: 16px;
-  background: var(--foab-card-color);
-}
-
-.group-card-content {
-  min-width: 0;
-  flex: 1;
-}
-
-.group-card h3 {
-  overflow: hidden;
-  font-size: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin-top: 2px;
 }
 
 .group-icon {
@@ -265,57 +240,73 @@ button:disabled {
   line-height: 1.5;
 }
 
-.settings-category-list {
-  display: grid;
-  gap: 10px;
+.list-section-heading {
+  margin-top: 4px;
 }
 
-.settings-category {
+.list-section-heading h3 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+.settings-list {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--foab-muted-color) 16%, transparent);
+  border-radius: 16px;
+  background: var(--foab-card-color);
+}
+
+.settings-list-row {
   display: flex;
   align-items: center;
   gap: 14px;
   width: 100%;
-  min-height: 76px;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--foab-muted-color) 18%, transparent);
-  border-radius: 16px;
-  background: var(--foab-card-color);
+  min-height: 72px;
+  padding: 13px 15px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--foab-muted-color) 12%, transparent);
+  background: transparent;
   color: var(--foab-text-color);
   text-align: left;
-  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+  transition: background 120ms ease;
 }
 
-.settings-category:hover {
-  border-color: color-mix(in srgb, var(--foab-accent-color) 65%, transparent);
+.settings-list-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-list-row:hover,
+.settings-list-row:focus-visible {
   background: color-mix(in srgb, var(--foab-accent-color) 8%, var(--foab-card-color));
-  transform: translateY(-1px);
 }
 
-.settings-category-icon {
+.settings-list-row-icon {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--foab-accent-color) 20%, transparent);
   color: var(--foab-accent-color);
-  font-size: 18px;
-  font-weight: 800;
+  width: 34px;
+  height: 34px;
 }
 
-.settings-category-copy {
+.settings-list-row-copy {
   display: grid;
   min-width: 0;
   flex: 1;
   gap: 4px;
 }
 
-.settings-category-copy strong {
+.settings-list-row-copy strong {
+  overflow: hidden;
   font-size: 16px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.settings-category-copy span {
+.settings-list-row-copy span {
   overflow: hidden;
   color: var(--foab-muted-color);
   font-size: 14px;
@@ -324,22 +315,27 @@ button:disabled {
   white-space: nowrap;
 }
 
-.settings-category-action {
+.settings-list-row-meta {
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
   flex: 0 0 auto;
-  color: var(--foab-accent-color);
-  font-size: 14px;
-  font-weight: 650;
+  align-items: center;
 }
 
-.feature-list {
-  display: grid;
-  gap: 12px;
+.settings-list-row-chevron {
+  flex: 0 0 auto;
+  color: var(--foab-muted-color);
 }
 
-.feature-card,
+.group-list-row {
+  min-height: 76px;
+}
+
+.group-list-row .group-icon {
+  width: 42px;
+  height: 42px;
+  font-size: 18px;
+}
+
 .feature-summary {
   display: grid;
   gap: 16px;
@@ -349,31 +345,26 @@ button:disabled {
   background: var(--foab-card-color);
 }
 
-.feature-card-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+.settings-list-row-meta .status-chip {
+  min-height: 26px;
+  padding: 3px 9px;
 }
 
-.feature-card-heading h3,
-.feature-card-heading p,
+.settings-list-row-meta + .settings-list-row-chevron {
+  margin-left: 2px;
+}
+
+/* Keep the chevron as the final affordance, like Telegram's native lists. */
+.settings-list-row-chevron {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
 .feature-summary p {
   margin: 0;
 }
 
-.feature-card-heading h3 {
-  font-size: 17px;
-  line-height: 1.25;
-}
-
-.feature-card-heading p,
-.feature-mode-row span {
-  color: var(--foab-muted-color);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.feature-card-footer,
 .feature-detail-row {
   display: flex;
   align-items: center;
@@ -491,21 +482,16 @@ button:disabled {
 }
 
 @media (max-width: 460px) {
-  .group-card {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .group-card .secondary-button {
-    width: 100%;
-  }
-
-  .settings-category {
+  .settings-list-row {
     gap: 10px;
   }
 
-  .settings-category-action {
-    display: none;
+  .settings-list-row-meta .status-chip {
+    padding-inline: 7px;
+  }
+
+  .settings-list-row-copy span {
+    white-space: normal;
   }
 }
 
