@@ -2,6 +2,7 @@ import type { InlineKeyboardMarkup } from 'grammy/types';
 import type { MessageCatalog, SupportedLocale } from '../i18n/messages.js';
 import {
   settingsCallbackData,
+  type MessageDeliveryMode,
   type SettingsCallback,
   type SettingsFeature,
 } from './commands.js';
@@ -47,12 +48,25 @@ export function settingsFeatureKeyboard(
   messages: MessageCatalog,
   feature: SettingsFeature,
   configured: boolean,
+  mode: MessageDeliveryMode,
+  deletePrevious: boolean,
 ): InlineKeyboardMarkup {
   const rows: InlineKeyboardMarkup['inline_keyboard'] = [
+    [
+      callbackButton(`${messages.settingsFeatureDisableButton}${configured ? ' ✅' : ''}`, { kind: 'disable-feature', feature }),
+      callbackButton(`${messages.settingsFeatureActivateButton}${configured ? '' : ' ✅'}`, { kind: 'enable-feature', feature }),
+    ],
     [callbackButton(messages.settingsFeatureEditButton, { kind: 'edit-feature', feature })],
   ];
-  if (configured) {
-    rows.push([callbackButton(messages.settingsFeatureDisableButton, { kind: 'disable-feature', feature })]);
+  if (feature !== 'rules') {
+    rows.push([
+      callbackButton(`${messages.settingsFeatureAlwaysButton}${mode === 'always' ? ' ✅' : ''}`, { kind: 'set-feature-mode', feature, mode: 'always' }),
+      callbackButton(`${messages.settingsFeatureFirstEntryButton}${mode === 'first' ? ' ✅' : ''}`, { kind: 'set-feature-mode', feature, mode: 'first' }),
+    ]);
+    rows.push([callbackButton(
+      `${messages.settingsFeatureDeletePreviousButton} ${deletePrevious ? '✅' : '❌'}`,
+      { kind: 'toggle-feature-delete', feature },
+    )]);
   }
   rows.push([callbackButton(messages.settingsBackButton, { kind: 'back' })]);
   return { inline_keyboard: rows };

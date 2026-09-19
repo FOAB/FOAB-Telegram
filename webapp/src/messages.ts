@@ -41,6 +41,11 @@ export interface UiMessages {
   readonly enabled: string;
   readonly disabled: string;
   readonly mode: string;
+  readonly messageModeAlways: string;
+  readonly messageModeFirstEntry: string;
+  readonly deletePreviousMessage: string;
+  readonly deletePreviousOn: string;
+  readonly deletePreviousOff: string;
   readonly customizeMessage: string;
   readonly enable: string;
   readonly disable: string;
@@ -96,6 +101,11 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     enabled: 'Enabled',
     disabled: 'Disabled',
     mode: 'Mode',
+    messageModeAlways: 'Always send',
+    messageModeFirstEntry: 'Send first entry',
+    deletePreviousMessage: 'Delete previous message',
+    deletePreviousOn: 'Enabled',
+    deletePreviousOff: 'Disabled',
     customizeMessage: 'Customize message',
     enable: 'Enable',
     disable: 'Disable',
@@ -149,6 +159,11 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     enabled: 'Ativado',
     disabled: 'Desativado',
     mode: 'Modo',
+    messageModeAlways: 'Sempre enviar',
+    messageModeFirstEntry: 'Enviar 1ª entrada',
+    deletePreviousMessage: 'Deletar mensagem anterior',
+    deletePreviousOn: 'Ativado',
+    deletePreviousOff: 'Desativado',
     customizeMessage: 'Personalizar mensagem',
     enable: 'Ativar',
     disable: 'Desativar',
@@ -202,6 +217,11 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     enabled: 'Activado',
     disabled: 'Desactivado',
     mode: 'Modo',
+    messageModeAlways: 'Enviar siempre',
+    messageModeFirstEntry: 'Enviar primera entrada',
+    deletePreviousMessage: 'Eliminar mensaje anterior',
+    deletePreviousOn: 'Activado',
+    deletePreviousOff: 'Desactivado',
     customizeMessage: 'Personalizar mensaje',
     enable: 'Activar',
     disable: 'Desactivar',

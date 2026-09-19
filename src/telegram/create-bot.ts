@@ -22,6 +22,7 @@ import {
 import {
   parseSettingsArguments,
   parseSettingsCallbackData,
+  type MessageDeliveryMode,
   type SettingsCallback,
   type SettingsCommand,
   type SettingsFeature,
@@ -186,13 +187,24 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
 
   bot.on('message:new_chat_members', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
-    if (!group?.isActive || group.welcomeMessage === null) {
+    if (
+      !group?.isActive ||
+      group.welcomeMessage === null ||
+      (group.welcomeMode === 'first' && group.welcomeSentOnce)
+    ) {
       return;
     }
     if (context.message.new_chat_members.some((member) => member.id === context.me.id)) {
       return;
     }
-    await context.reply(group.welcomeMessage);
+    await deletePreviousAutomatedMessage(context, group.deletePreviousWelcomeMessage, group.welcomeLastMessageId, dependencies, 'welcome');
+    const sent = await context.reply(group.welcomeMessage);
+    await dependencies.groups.recordAutomatedMessage(
+      dependencies.installationId,
+      group.telegramChatId,
+      'welcome',
+      sent.message_id,
+    );
     dependencies.logger?.info('telegram_welcome_message_sent', {
       chatType: group.chatType,
       observedGroup: true,
@@ -203,10 +215,22 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
 
   bot.on('message:left_chat_member', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
-    if (!group?.isActive || group.goodbyeMessage === null || context.message.left_chat_member.is_bot) {
+    if (
+      !group?.isActive ||
+      group.goodbyeMessage === null ||
+      (group.goodbyeMode === 'first' && group.goodbyeSentOnce) ||
+      context.message.left_chat_member.is_bot
+    ) {
       return;
     }
-    await context.reply(group.goodbyeMessage);
+    await deletePreviousAutomatedMessage(context, group.deletePreviousGoodbyeMessage, group.goodbyeLastMessageId, dependencies, 'goodbye');
+    const sent = await context.reply(group.goodbyeMessage);
+    await dependencies.groups.recordAutomatedMessage(
+      dependencies.installationId,
+      group.telegramChatId,
+      'goodbye',
+      sent.message_id,
+    );
     dependencies.logger?.info('telegram_goodbye_message_sent', {
       chatType: group.chatType,
       observedGroup: true,
@@ -657,6 +681,29 @@ function botChatType(chat: Chat | undefined): BotChatType | null {
   return chat.type;
 }
 
+/** Deletes the previous automated delivery when the current group policy requests replacement. */
+async function deletePreviousAutomatedMessage(
+  context: Context,
+  enabled: boolean,
+  messageId: number | null,
+  dependencies: BotDependencies,
+  feature: 'welcome' | 'goodbye',
+): Promise<void> {
+  if (!enabled || messageId === null || !context.chat) {
+    return;
+  }
+
+  try {
+    await context.api.deleteMessage(context.chat.id, messageId);
+  } catch {
+    const chatType = botChatType(context.chat);
+    dependencies.logger?.info('telegram_automated_message_delete_failed', {
+      ...(chatType === null ? {} : { chatType }),
+      automatedMessage: feature,
+    });
+  }
+}
+
 /** Handles private group discovery and updates with normal private-chat replies. */
 async function handlePrivateSettings(
   context: Context,
@@ -852,8 +899,17 @@ async function handleGroupSettingsCallback(
     const configured = featureValue(group, action.feature) !== null;
     await editSettingsMessage(
       context,
-      messages.settingsFeatureStatus(action.feature, configured),
-      settingsFeatureKeyboard(messages, action.feature, configured),
+      messages.settingsFeatureStatus(action.feature, configured, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
+      settingsFeatureKeyboard(messages, action.feature, configured, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
+    );
+    return null;
+  }
+  if (action.kind === 'enable-feature') {
+    flows.begin(key, action.feature);
+    await editSettingsMessage(
+      context,
+      messages.settingsFeaturePrompt(action.feature),
+      settingsFeatureKeyboard(messages, action.feature, false, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
     );
     return null;
   }
@@ -862,7 +918,7 @@ async function handleGroupSettingsCallback(
     await editSettingsMessage(
       context,
       messages.settingsFeaturePrompt(action.feature),
-      settingsFeatureKeyboard(messages, action.feature, featureValue(group, action.feature) !== null),
+      settingsFeatureKeyboard(messages, action.feature, featureValue(group, action.feature) !== null, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
     );
     return null;
   }
@@ -885,10 +941,21 @@ async function handleGroupSettingsCallback(
     const updatedMessages = getMessages(supportedLocale(updated.locale));
     await editSettingsMessage(
       context,
-      updatedMessages.settingsFeatureStatus(action.feature, false),
-      settingsFeatureKeyboard(updatedMessages, action.feature, false),
+      updatedMessages.settingsFeatureStatus(action.feature, false, featureMode(updated, action.feature), featureDeletePrevious(updated, action.feature)),
+      settingsFeatureKeyboard(updatedMessages, action.feature, false, featureMode(updated, action.feature), featureDeletePrevious(updated, action.feature)),
     );
     return updatedMessages.settingsFeatureUpdated(action.feature, false);
+  }
+  if (action.kind === 'set-feature-mode') {
+    return await updateFeatureFromCallback(context, dependencies, flows, key, group, action.feature, {
+      [action.feature === 'welcome' ? 'welcomeMode' : 'goodbyeMode']: action.mode,
+    });
+  }
+  if (action.kind === 'toggle-feature-delete') {
+    return await updateFeatureFromCallback(context, dependencies, flows, key, group, action.feature, {
+      [action.feature === 'welcome' ? 'deletePreviousWelcomeMessage' : 'deletePreviousGoodbyeMessage']:
+        !featureDeletePrevious(group, action.feature),
+    });
   }
   if (action.kind === 'show-language') {
     await editSettingsMessage(context, messages.settingsLanguagePrompt, settingsLanguageKeyboard(messages));
@@ -1010,8 +1077,17 @@ async function handlePrivateSettingsCallback(
     const configured = featureValue(group, action.feature) !== null;
     await editSettingsMessage(
       context,
-      groupMessages.settingsFeatureStatus(action.feature, configured),
-      settingsFeatureKeyboard(groupMessages, action.feature, configured),
+      groupMessages.settingsFeatureStatus(action.feature, configured, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
+      settingsFeatureKeyboard(groupMessages, action.feature, configured, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
+    );
+    return null;
+  }
+  if (action.kind === 'enable-feature') {
+    flows.begin(groupKey, action.feature);
+    await editSettingsMessage(
+      context,
+      groupMessages.settingsFeaturePrompt(action.feature),
+      settingsFeatureKeyboard(groupMessages, action.feature, false, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
     );
     return null;
   }
@@ -1020,7 +1096,7 @@ async function handlePrivateSettingsCallback(
     await editSettingsMessage(
       context,
       groupMessages.settingsFeaturePrompt(action.feature),
-      settingsFeatureKeyboard(groupMessages, action.feature, featureValue(group, action.feature) !== null),
+      settingsFeatureKeyboard(groupMessages, action.feature, featureValue(group, action.feature) !== null, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
     );
     return null;
   }
@@ -1043,10 +1119,21 @@ async function handlePrivateSettingsCallback(
     const updatedMessages = getMessages(supportedLocale(updated.locale));
     await editSettingsMessage(
       context,
-      updatedMessages.settingsFeatureStatus(action.feature, false),
-      settingsFeatureKeyboard(updatedMessages, action.feature, false),
+      updatedMessages.settingsFeatureStatus(action.feature, false, featureMode(updated, action.feature), featureDeletePrevious(updated, action.feature)),
+      settingsFeatureKeyboard(updatedMessages, action.feature, false, featureMode(updated, action.feature), featureDeletePrevious(updated, action.feature)),
     );
     return updatedMessages.settingsFeatureUpdated(action.feature, false);
+  }
+  if (action.kind === 'set-feature-mode') {
+    return await updateFeatureFromCallback(context, dependencies, flows, groupKey, group, action.feature, {
+      [action.feature === 'welcome' ? 'welcomeMode' : 'goodbyeMode']: action.mode,
+    });
+  }
+  if (action.kind === 'toggle-feature-delete') {
+    return await updateFeatureFromCallback(context, dependencies, flows, groupKey, group, action.feature, {
+      [action.feature === 'welcome' ? 'deletePreviousWelcomeMessage' : 'deletePreviousGoodbyeMessage']:
+        !featureDeletePrevious(group, action.feature),
+    });
   }
   if (action.kind === 'show-language') {
     await editSettingsMessage(
@@ -1218,6 +1305,16 @@ function featureValue(group: GroupRecord, feature: SettingsFeature): string | nu
   }
 }
 
+/** Reads the delivery mode for an automated message feature. */
+function featureMode(group: GroupRecord, feature: SettingsFeature): MessageDeliveryMode {
+  return feature === 'welcome' ? group.welcomeMode : feature === 'goodbye' ? group.goodbyeMode : 'always';
+}
+
+/** Reads whether an automated message should replace its previous delivery. */
+function featureDeletePrevious(group: GroupRecord, feature: SettingsFeature): boolean {
+  return feature === 'welcome' ? group.deletePreviousWelcomeMessage : feature === 'goodbye' ? group.deletePreviousGoodbyeMessage : false;
+}
+
 /** Converts one feature action into the allowlisted repository update. */
 function featureUpdate(feature: SettingsFeature, value: string | null): GroupSettingsUpdate {
   switch (feature) {
@@ -1271,9 +1368,60 @@ async function handleFeatureText(
   const updatedMessages = getMessages(supportedLocale(updated.locale));
   await replyToCommand(
     context,
-    updatedMessages.settingsFeatureUpdated(feature, value !== null),
-    settingsOverviewKeyboard(updatedMessages, dependencies.webAppUrl),
+    updatedMessages.settingsFeatureStatus(
+      feature,
+      value !== null,
+      featureMode(updated, feature),
+      featureDeletePrevious(updated, feature),
+    ),
+    settingsFeatureKeyboard(
+      updatedMessages,
+      feature,
+      value !== null,
+      featureMode(updated, feature),
+      featureDeletePrevious(updated, feature),
+    ),
   );
+}
+
+/** Applies a mode or deletion toggle and redraws the same focused fallback screen. */
+async function updateFeatureFromCallback(
+  context: Context,
+  dependencies: BotDependencies,
+  flows: ActiveFlowStore,
+  key: FlowKey,
+  group: GroupRecord,
+  feature: SettingsFeature,
+  update: GroupSettingsUpdate,
+): Promise<string | null> {
+  if (feature === 'rules') {
+    return null;
+  }
+  const updated = await dependencies.groups.updateSettings(
+    dependencies.installationId,
+    group.telegramChatId,
+    group.settingsRevision,
+    update,
+  );
+  const messages = getMessages(supportedLocale(group.locale));
+  if (!updated) {
+    await editSettingsMessage(
+      context,
+      messages.settingsConflict,
+      settingsOverviewKeyboard(messages, dependencies.webAppUrl),
+    );
+    return messages.settingsConflict;
+  }
+
+  cancelFeatureFlows(flows, key);
+  const updatedMessages = getMessages(supportedLocale(updated.locale));
+  const configured = featureValue(updated, feature) !== null;
+  await editSettingsMessage(
+    context,
+    updatedMessages.settingsFeatureStatus(feature, configured, featureMode(updated, feature), featureDeletePrevious(updated, feature)),
+    settingsFeatureKeyboard(updatedMessages, feature, configured, featureMode(updated, feature), featureDeletePrevious(updated, feature)),
+  );
+  return updatedMessages.settingsUpdated;
 }
 
 /** Converts the parser's closed union into the repository's allowlisted patch. */

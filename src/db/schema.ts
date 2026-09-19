@@ -26,6 +26,9 @@ export type BotGroupStatus =
   | 'left'
   | 'kicked';
 
+/** Delivery modes shared by welcome and goodbye automation. */
+export type MessageDeliveryMode = 'always' | 'first';
+
 /** Supported update kinds entering the durable inbox. */
 export type TelegramUpdateKind = 'message' | 'my_chat_member' | 'callback_query';
 
@@ -68,7 +71,15 @@ export const telegramGroups = pgTable(
     timeZone: varchar('time_zone', { length: 64 }).default('UTC').notNull(),
     settingsRevision: integer('settings_revision').default(0).notNull(),
     welcomeMessage: text('welcome_message'),
+    welcomeMode: text('welcome_mode').$type<MessageDeliveryMode>().default('always').notNull(),
+    deletePreviousWelcomeMessage: boolean('delete_previous_welcome_message').default(false).notNull(),
+    welcomeSentOnce: boolean('welcome_sent_once').default(false).notNull(),
+    welcomeLastMessageId: integer('welcome_last_message_id'),
     goodbyeMessage: text('goodbye_message'),
+    goodbyeMode: text('goodbye_mode').$type<MessageDeliveryMode>().default('always').notNull(),
+    deletePreviousGoodbyeMessage: boolean('delete_previous_goodbye_message').default(false).notNull(),
+    goodbyeSentOnce: boolean('goodbye_sent_once').default(false).notNull(),
+    goodbyeLastMessageId: integer('goodbye_last_message_id'),
     rulesText: text('rules_text'),
     botStatus: text('bot_status').$type<BotGroupStatus>().default('member').notNull(),
     isActive: boolean('is_active').default(true).notNull(),
@@ -87,6 +98,10 @@ export const telegramGroups = pgTable(
     check(
       'telegram_groups_bot_status_check',
       sql`${table.botStatus} IN ('creator', 'administrator', 'member', 'restricted', 'left', 'kicked')`,
+    ),
+    check(
+      'telegram_groups_message_mode_check',
+      sql`${table.welcomeMode} IN ('always', 'first') AND ${table.goodbyeMode} IN ('always', 'first')`,
     ),
     index('telegram_groups_installation_active_idx').on(
       table.installationId,

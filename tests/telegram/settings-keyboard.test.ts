@@ -34,13 +34,17 @@ describe('settings interaction keyboards', () => {
     );
   });
 
-  it('offers edit, disable, and back actions for a configured feature', () => {
-    const keyboard = settingsFeatureKeyboard(getMessages('en-US'), 'welcome', true);
+  it('offers activation, editing, delivery mode, deletion, and back actions for a configured feature', () => {
+    const keyboard = settingsFeatureKeyboard(getMessages('en-US'), 'welcome', true, 'always', false);
     const buttons = keyboard.inline_keyboard.flat();
 
     expect(buttons.map((button) => 'callback_data' in button ? button.callback_data : '')).toEqual([
-      'foab:settings:edit-feature:welcome',
       'foab:settings:disable-feature:welcome',
+      'foab:settings:enable-feature:welcome',
+      'foab:settings:edit-feature:welcome',
+      'foab:settings:feature-mode:welcome:always',
+      'foab:settings:feature-mode:welcome:first',
+      'foab:settings:toggle-feature-delete:welcome',
       'foab:settings:back',
     ]);
   });

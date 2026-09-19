@@ -14,6 +14,7 @@ import {
   WebAppApiError,
   type GroupSettings,
   type GroupSettingsUpdate,
+  type MessageDeliveryMode,
   type SessionState,
 } from './api.js';
 import {
@@ -30,6 +31,7 @@ import './styles.css';
 
 const TIME_ZONE_OPTIONS = ['UTC', 'America/Sao_Paulo', 'America/New_York', 'Europe/Lisbon'] as const;
 type SettingsSection = 'home' | 'general' | 'welcome' | 'goodbye' | 'rules';
+type MessageFeatureDraft = Pick<GroupSettingsUpdate, 'welcomeMessage' | 'goodbyeMessage' | 'welcomeMode' | 'goodbyeMode' | 'deletePreviousWelcomeMessage' | 'deletePreviousGoodbyeMessage'>;
 
 /** Root application for the private FOAB administration Mini App. */
 function App(): ReactElement {
@@ -277,7 +279,11 @@ function SettingsView({
   const [locale, setLocale] = useState<UiLocale>(group.locale);
   const [timeZone, setTimeZone] = useState(group.timeZone);
   const [welcomeMessage, setWelcomeMessage] = useState(group.welcomeMessage ?? '');
+  const [welcomeMode, setWelcomeMode] = useState<MessageDeliveryMode>(group.welcomeMode);
+  const [deletePreviousWelcomeMessage, setDeletePreviousWelcomeMessage] = useState(group.deletePreviousWelcomeMessage);
   const [goodbyeMessage, setGoodbyeMessage] = useState(group.goodbyeMessage ?? '');
+  const [goodbyeMode, setGoodbyeMode] = useState<MessageDeliveryMode>(group.goodbyeMode);
+  const [deletePreviousGoodbyeMessage, setDeletePreviousGoodbyeMessage] = useState(group.deletePreviousGoodbyeMessage);
   const [rulesText, setRulesText] = useState(group.rulesText ?? '');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -286,22 +292,34 @@ function SettingsView({
     setLocale(group.locale);
     setTimeZone(group.timeZone);
     setWelcomeMessage(group.welcomeMessage ?? '');
+    setWelcomeMode(group.welcomeMode);
+    setDeletePreviousWelcomeMessage(group.deletePreviousWelcomeMessage);
     setGoodbyeMessage(group.goodbyeMessage ?? '');
+    setGoodbyeMode(group.goodbyeMode);
+    setDeletePreviousGoodbyeMessage(group.deletePreviousGoodbyeMessage);
     setRulesText(group.rulesText ?? '');
   }, [group]);
 
-  const saveChanges = async (): Promise<void> => {
+  const saveChanges = async (draft: MessageFeatureDraft = {}): Promise<void> => {
     setSaving(true);
     setFeedback(null);
     try {
-      const nextWelcomeMessage = optionalText(welcomeMessage);
-      const nextGoodbyeMessage = optionalText(goodbyeMessage);
+      const nextWelcomeMessage = optionalText('welcomeMessage' in draft ? draft.welcomeMessage ?? '' : welcomeMessage);
+      const nextWelcomeMode = draft.welcomeMode ?? welcomeMode;
+      const nextDeletePreviousWelcomeMessage = draft.deletePreviousWelcomeMessage ?? deletePreviousWelcomeMessage;
+      const nextGoodbyeMessage = optionalText('goodbyeMessage' in draft ? draft.goodbyeMessage ?? '' : goodbyeMessage);
+      const nextGoodbyeMode = draft.goodbyeMode ?? goodbyeMode;
+      const nextDeletePreviousGoodbyeMessage = draft.deletePreviousGoodbyeMessage ?? deletePreviousGoodbyeMessage;
       const nextRulesText = optionalText(rulesText);
       const update: GroupSettingsUpdate = {
         ...(locale === group.locale ? {} : { locale }),
         ...(timeZone === group.timeZone ? {} : { timeZone }),
         ...(nextWelcomeMessage === group.welcomeMessage ? {} : { welcomeMessage: nextWelcomeMessage }),
+        ...(nextWelcomeMode === group.welcomeMode ? {} : { welcomeMode: nextWelcomeMode }),
+        ...(nextDeletePreviousWelcomeMessage === group.deletePreviousWelcomeMessage ? {} : { deletePreviousWelcomeMessage: nextDeletePreviousWelcomeMessage }),
         ...(nextGoodbyeMessage === group.goodbyeMessage ? {} : { goodbyeMessage: nextGoodbyeMessage }),
+        ...(nextGoodbyeMode === group.goodbyeMode ? {} : { goodbyeMode: nextGoodbyeMode }),
+        ...(nextDeletePreviousGoodbyeMessage === group.deletePreviousGoodbyeMessage ? {} : { deletePreviousGoodbyeMessage: nextDeletePreviousGoodbyeMessage }),
         ...(nextRulesText === group.rulesText ? {} : { rulesText: nextRulesText }),
       };
       if (Object.keys(update).length === 0) {
@@ -342,7 +360,11 @@ function SettingsView({
         group={group}
         messages={messages}
         message={isWelcome ? welcomeMessage : goodbyeMessage}
+        mode={isWelcome ? welcomeMode : goodbyeMode}
+        deletePrevious={isWelcome ? deletePreviousWelcomeMessage : deletePreviousGoodbyeMessage}
         onMessageChange={isWelcome ? setWelcomeMessage : setGoodbyeMessage}
+        onModeChange={isWelcome ? setWelcomeMode : setGoodbyeMode}
+        onDeletePreviousChange={isWelcome ? setDeletePreviousWelcomeMessage : setDeletePreviousGoodbyeMessage}
         onBack={() => onSectionChange('home')}
         onSave={saveChanges}
         saving={saving}
@@ -494,7 +516,11 @@ function MessageFeatureView({
   group,
   messages,
   message,
+  mode,
+  deletePrevious,
   onMessageChange,
+  onModeChange,
+  onDeletePreviousChange,
   onBack,
   onSave,
   saving,
@@ -504,9 +530,13 @@ function MessageFeatureView({
   readonly group: GroupSettings;
   readonly messages: ReturnType<typeof getUiMessages>;
   readonly message: string;
+  readonly mode: MessageDeliveryMode;
+  readonly deletePrevious: boolean;
   readonly onMessageChange: (value: string) => void;
+  readonly onModeChange: (value: MessageDeliveryMode) => void;
+  readonly onDeletePreviousChange: (value: boolean) => void;
   readonly onBack: () => void;
-  readonly onSave: () => Promise<void>;
+  readonly onSave: (draft?: MessageFeatureDraft) => Promise<void>;
   readonly saving: boolean;
   readonly feedback: string | null;
 }): ReactElement {
@@ -514,8 +544,14 @@ function MessageFeatureView({
   const isWelcome = kind === 'welcome';
   const title = isWelcome ? messages.welcomeMessage : messages.goodbyeMessage;
   const description = isWelcome ? messages.welcomeDescription : messages.goodbyeDescription;
-  const mode = isWelcome ? messages.welcomeMode : messages.goodbyeMode;
   const configured = optionalText(message) !== null;
+
+  const messageField = isWelcome ? 'welcomeMessage' : 'goodbyeMessage';
+  const modeField = isWelcome ? 'welcomeMode' : 'goodbyeMode';
+  const deleteField = isWelcome ? 'deletePreviousWelcomeMessage' : 'deletePreviousGoodbyeMessage';
+  const saveFeatureDraft = (draft: MessageFeatureDraft): void => {
+    void onSave(draft);
+  };
 
   return (
     <section className="content-section" aria-labelledby="message-feature-title">
@@ -542,22 +578,63 @@ function MessageFeatureView({
         </div>
         <div className="feature-detail-row feature-mode-row">
           <strong>{messages.mode}</strong>
-          <span>{mode}</span>
+          <span>{mode === 'always' ? messages.messageModeAlways : messages.messageModeFirstEntry}</span>
+        </div>
+        <div className="feature-detail-row">
+          <strong>{messages.deletePreviousMessage}</strong>
+          <span>{deletePrevious ? messages.deletePreviousOn : messages.deletePreviousOff}</span>
         </div>
       </div>
       <div className="feature-actions">
         <button
           className="secondary-button"
           type="button"
+          disabled={!configured}
           onClick={() => {
             onMessageChange('');
-            setEditorOpen(true);
+            saveFeatureDraft({ [messageField]: null });
           }}
         >
-          {configured ? messages.disable : messages.enable}
+          {messages.disable}
         </button>
         <button className="primary-button" type="button" onClick={() => setEditorOpen(true)}>
-          {messages.customizeMessage}
+          {configured ? messages.customizeMessage : messages.enable}
+        </button>
+      </div>
+      <div className="feature-options" aria-label={messages.mode}>
+        <p className="feature-options-title">{messages.mode}</p>
+        <div className="feature-option-grid">
+          <button
+            className={`feature-option ${mode === 'always' ? 'feature-option-active' : ''}`}
+            type="button"
+            onClick={() => {
+              onModeChange('always');
+              saveFeatureDraft({ [modeField]: 'always' });
+            }}
+          >
+            {messages.messageModeAlways}
+          </button>
+          <button
+            className={`feature-option ${mode === 'first' ? 'feature-option-active' : ''}`}
+            type="button"
+            onClick={() => {
+              onModeChange('first');
+              saveFeatureDraft({ [modeField]: 'first' });
+            }}
+          >
+            {messages.messageModeFirstEntry}
+          </button>
+        </div>
+        <button
+          className={`feature-option feature-option-wide ${deletePrevious ? 'feature-option-active' : ''}`}
+          type="button"
+          onClick={() => {
+            const nextValue = !deletePrevious;
+            onDeletePreviousChange(nextValue);
+            saveFeatureDraft({ [deleteField]: nextValue });
+          }}
+        >
+          {messages.deletePreviousMessage}: {deletePrevious ? messages.deletePreviousOn : messages.deletePreviousOff}
         </button>
       </div>
       {editorOpen && (
@@ -565,7 +642,7 @@ function MessageFeatureView({
           className="settings-form feature-editor"
           onSubmit={(event) => {
             event.preventDefault();
-            void onSave();
+            void onSave({ [messageField]: message });
           }}
         >
           <label>

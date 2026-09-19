@@ -15,6 +15,7 @@ import type {
   GroupRecord,
   GroupSettingsUpdate,
 } from '../db/group-repository.js';
+import type { MessageDeliveryMode } from '../db/schema.js';
 import { isGroupAdministrator, type GroupMemberLookup } from '../telegram/authorization.js';
 import { parseSupportedLocale, isSupportedTimeZone } from '../telegram/commands.js';
 import { validateTelegramWebAppInitData } from './telegram-init-data.js';
@@ -75,7 +76,11 @@ export interface WebAppGroupResponse {
   readonly timeZone: string;
   readonly settingsRevision: number;
   readonly welcomeMessage: string | null;
+  readonly welcomeMode: MessageDeliveryMode;
+  readonly deletePreviousWelcomeMessage: boolean;
   readonly goodbyeMessage: string | null;
+  readonly goodbyeMode: MessageDeliveryMode;
+  readonly deletePreviousGoodbyeMessage: boolean;
   readonly rulesText: string | null;
 }
 
@@ -303,7 +308,11 @@ function toGroupResponse(group: GroupRecord): WebAppGroupResponse {
     timeZone: group.timeZone,
     settingsRevision: group.settingsRevision,
     welcomeMessage: group.welcomeMessage,
+    welcomeMode: group.welcomeMode,
+    deletePreviousWelcomeMessage: group.deletePreviousWelcomeMessage,
     goodbyeMessage: group.goodbyeMessage,
+    goodbyeMode: group.goodbyeMode,
+    deletePreviousGoodbyeMessage: group.deletePreviousGoodbyeMessage,
     rulesText: group.rulesText,
   };
 }
@@ -376,7 +385,11 @@ function parseSettingsPatch(value: unknown): {
     'locale',
     'timeZone',
     'welcomeMessage',
+    'welcomeMode',
+    'deletePreviousWelcomeMessage',
     'goodbyeMessage',
+    'goodbyeMode',
+    'deletePreviousGoodbyeMessage',
     'rulesText',
   ]);
   if (keys.some((key) => !allowedKeys.has(key)) || !keys.includes('expectedRevision')) {
@@ -397,7 +410,11 @@ function parseSettingsPatch(value: unknown): {
     locale?: string;
     timeZone?: string;
     welcomeMessage?: string | null;
+    welcomeMode?: MessageDeliveryMode;
+    deletePreviousWelcomeMessage?: boolean;
     goodbyeMessage?: string | null;
+    goodbyeMode?: MessageDeliveryMode;
+    deletePreviousGoodbyeMessage?: boolean;
     rulesText?: string | null;
   } = {};
   if (hasOwn(value, 'locale')) {
@@ -417,6 +434,35 @@ function parseSettingsPatch(value: unknown): {
       return null;
     }
     update.timeZone = timeZoneValue;
+  }
+
+  if (hasOwn(value, 'welcomeMode')) {
+    const welcomeMode = value['welcomeMode'];
+    if (welcomeMode !== 'always' && welcomeMode !== 'first') {
+      return null;
+    }
+    update.welcomeMode = welcomeMode;
+  }
+  if (hasOwn(value, 'deletePreviousWelcomeMessage')) {
+    const deletePreviousWelcomeMessage = value['deletePreviousWelcomeMessage'];
+    if (typeof deletePreviousWelcomeMessage !== 'boolean') {
+      return null;
+    }
+    update.deletePreviousWelcomeMessage = deletePreviousWelcomeMessage;
+  }
+  if (hasOwn(value, 'goodbyeMode')) {
+    const goodbyeMode = value['goodbyeMode'];
+    if (goodbyeMode !== 'always' && goodbyeMode !== 'first') {
+      return null;
+    }
+    update.goodbyeMode = goodbyeMode;
+  }
+  if (hasOwn(value, 'deletePreviousGoodbyeMessage')) {
+    const deletePreviousGoodbyeMessage = value['deletePreviousGoodbyeMessage'];
+    if (typeof deletePreviousGoodbyeMessage !== 'boolean') {
+      return null;
+    }
+    update.deletePreviousGoodbyeMessage = deletePreviousGoodbyeMessage;
   }
 
   const welcomeMessage = parseOptionalTextField(value, 'welcomeMessage', GROUP_MESSAGE_MAX_LENGTH);

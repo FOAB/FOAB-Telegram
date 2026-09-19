@@ -70,10 +70,25 @@ describe('settings command contract', () => {
       kind: 'disable-feature',
       feature: 'goodbye',
     });
+    expect(parseSettingsCallbackData('foab:settings:enable-feature:welcome')).toEqual({
+      kind: 'enable-feature',
+      feature: 'welcome',
+    });
+    expect(parseSettingsCallbackData('foab:settings:feature-mode:welcome:first')).toEqual({
+      kind: 'set-feature-mode',
+      feature: 'welcome',
+      mode: 'first',
+    });
+    expect(parseSettingsCallbackData('foab:settings:toggle-feature-delete:welcome')).toEqual({
+      kind: 'toggle-feature-delete',
+      feature: 'welcome',
+    });
     expect(parseSettingsCallbackData('foab:settings:locale:fr-FR')).toBeNull();
     expect(parseSettingsCallbackData('foab:settings:group:0')).toBeNull();
     expect(parseSettingsCallbackData('other:settings:language')).toBeNull();
     expect(parseSettingsCallbackData('foab:settings:feature:unknown')).toBeNull();
+    expect(parseSettingsCallbackData('foab:settings:feature-mode:welcome:invalid')).toBeNull();
+    expect(parseSettingsCallbackData('foab:settings:feature-mode:welcome:first:extra')).toBeNull();
   });
 
   it('keeps settings visible to private chats and group administrators only', () => {

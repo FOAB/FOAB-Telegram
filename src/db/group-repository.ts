@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { FoabDatabase } from './database.js';
-import type { BotGroupStatus, GroupChatType } from './schema.js';
+import type { BotGroupStatus, GroupChatType, MessageDeliveryMode } from './schema.js';
 import { telegramGroups } from './schema.js';
 
 /** Maximum Telegram message size accepted for automated group messages. */
@@ -32,7 +32,11 @@ export interface GroupSettingsUpdate {
   readonly locale?: string;
   readonly timeZone?: string;
   readonly welcomeMessage?: string | null;
+  readonly welcomeMode?: MessageDeliveryMode;
+  readonly deletePreviousWelcomeMessage?: boolean;
   readonly goodbyeMessage?: string | null;
+  readonly goodbyeMode?: MessageDeliveryMode;
+  readonly deletePreviousGoodbyeMessage?: boolean;
   readonly rulesText?: string | null;
 }
 
@@ -47,7 +51,15 @@ export interface GroupRecord {
   readonly timeZone: string;
   readonly settingsRevision: number;
   readonly welcomeMessage: string | null;
+  readonly welcomeMode: MessageDeliveryMode;
+  readonly deletePreviousWelcomeMessage: boolean;
+  readonly welcomeSentOnce: boolean;
+  readonly welcomeLastMessageId: number | null;
   readonly goodbyeMessage: string | null;
+  readonly goodbyeMode: MessageDeliveryMode;
+  readonly deletePreviousGoodbyeMessage: boolean;
+  readonly goodbyeSentOnce: boolean;
+  readonly goodbyeLastMessageId: number | null;
   readonly rulesText: string | null;
   readonly botStatus: BotGroupStatus;
   readonly isActive: boolean;
@@ -208,7 +220,11 @@ export class GroupRepository {
       update.locale === undefined &&
       update.timeZone === undefined &&
       update.welcomeMessage === undefined &&
+      update.welcomeMode === undefined &&
+      update.deletePreviousWelcomeMessage === undefined &&
       update.goodbyeMessage === undefined &&
+      update.goodbyeMode === undefined &&
+      update.deletePreviousGoodbyeMessage === undefined &&
       update.rulesText === undefined
     ) {
       throw new RangeError('At least one group setting must be provided.');
@@ -218,6 +234,18 @@ export class GroupRepository {
     }
     if (update.timeZone !== undefined && update.timeZone.length > 64) {
       throw new RangeError('Group time zone exceeds the maximum supported length.');
+    }
+    if (update.welcomeMode !== undefined && !isMessageDeliveryMode(update.welcomeMode)) {
+      throw new RangeError('Welcome delivery mode is not supported.');
+    }
+    if (update.goodbyeMode !== undefined && !isMessageDeliveryMode(update.goodbyeMode)) {
+      throw new RangeError('Goodbye delivery mode is not supported.');
+    }
+    if (
+      (update.deletePreviousWelcomeMessage !== undefined && typeof update.deletePreviousWelcomeMessage !== 'boolean') ||
+      (update.deletePreviousGoodbyeMessage !== undefined && typeof update.deletePreviousGoodbyeMessage !== 'boolean')
+    ) {
+      throw new RangeError('Previous-message deletion settings must be boolean.');
     }
     validateOptionalGroupMessage(update.welcomeMessage, GROUP_MESSAGE_MAX_LENGTH, 'Welcome message');
     validateOptionalGroupMessage(update.goodbyeMessage, GROUP_MESSAGE_MAX_LENGTH, 'Goodbye message');
@@ -229,7 +257,17 @@ export class GroupRepository {
         ...(update.locale === undefined ? {} : { locale: update.locale }),
         ...(update.timeZone === undefined ? {} : { timeZone: update.timeZone }),
         ...(update.welcomeMessage === undefined ? {} : { welcomeMessage: update.welcomeMessage }),
+        ...(update.welcomeMode === undefined ? {} : { welcomeMode: update.welcomeMode }),
+        ...(update.deletePreviousWelcomeMessage === undefined ? {} : { deletePreviousWelcomeMessage: update.deletePreviousWelcomeMessage }),
+        ...((update.welcomeMessage !== undefined || update.welcomeMode !== undefined)
+          ? { welcomeSentOnce: false }
+          : {}),
         ...(update.goodbyeMessage === undefined ? {} : { goodbyeMessage: update.goodbyeMessage }),
+        ...(update.goodbyeMode === undefined ? {} : { goodbyeMode: update.goodbyeMode }),
+        ...(update.deletePreviousGoodbyeMessage === undefined ? {} : { deletePreviousGoodbyeMessage: update.deletePreviousGoodbyeMessage }),
+        ...((update.goodbyeMessage !== undefined || update.goodbyeMode !== undefined)
+          ? { goodbyeSentOnce: false }
+          : {}),
         ...(update.rulesText === undefined ? {} : { rulesText: update.rulesText }),
         settingsRevision: sql`${telegramGroups.settingsRevision} + 1`,
         updatedAt: new Date(),
@@ -245,6 +283,30 @@ export class GroupRepository {
       .returning();
 
     return rows[0] ?? null;
+  }
+
+  /** Records the Telegram message produced by one welcome or goodbye delivery. */
+  public async recordAutomatedMessage(
+    installationId: string,
+    telegramChatId: bigint,
+    feature: 'welcome' | 'goodbye',
+    messageId: number,
+  ): Promise<void> {
+    if (!Number.isSafeInteger(messageId) || messageId < 1) {
+      throw new RangeError('Automated message ID must be a positive safe integer.');
+    }
+    await this.db
+      .update(telegramGroups)
+      .set(feature === 'welcome'
+        ? { welcomeLastMessageId: messageId, welcomeSentOnce: true, updatedAt: new Date() }
+        : { goodbyeLastMessageId: messageId, goodbyeSentOnce: true, updatedAt: new Date() })
+      .where(
+        and(
+          eq(telegramGroups.installationId, installationId),
+          eq(telegramGroups.telegramChatId, telegramChatId),
+          eq(telegramGroups.isActive, true),
+        ),
+      );
   }
 
   /**
@@ -288,4 +350,9 @@ function validateOptionalGroupMessage(
   if (value.length > maximumLength || value.includes('\u0000')) {
     throw new RangeError(`${fieldName} exceeds its maximum size or contains an invalid character.`);
   }
+}
+
+/** Narrows runtime updates to the two persisted delivery modes. */
+function isMessageDeliveryMode(value: string): value is MessageDeliveryMode {
+  return value === 'always' || value === 'first';
 }

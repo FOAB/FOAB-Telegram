@@ -20,9 +20,13 @@ export interface MessageCatalog {
   readonly settingsWebAppButton: string;
   readonly settingsLanguagePrompt: string;
   readonly settingsTimeZonePrompt: string;
-  readonly settingsFeatureStatus: (feature: 'welcome' | 'rules' | 'goodbye', enabled: boolean) => string;
+  readonly settingsFeatureStatus: (feature: 'welcome' | 'rules' | 'goodbye', enabled: boolean, mode: 'always' | 'first', deletePrevious: boolean) => string;
   readonly settingsFeatureEditButton: string;
   readonly settingsFeatureDisableButton: string;
+  readonly settingsFeatureActivateButton: string;
+  readonly settingsFeatureAlwaysButton: string;
+  readonly settingsFeatureFirstEntryButton: string;
+  readonly settingsFeatureDeletePreviousButton: string;
   readonly settingsFeaturePrompt: (feature: 'welcome' | 'rules' | 'goodbye') => string;
   readonly settingsFeatureUpdated: (feature: 'welcome' | 'rules' | 'goodbye', enabled: boolean) => string;
   readonly settingsFeatureTooLong: string;
@@ -69,9 +73,13 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsWebAppButton: 'Open settings app',
     settingsLanguagePrompt: 'Choose the group language:',
     settingsTimeZonePrompt: 'Choose a common time zone. Use the command form for another supported IANA zone.',
-    settingsFeatureStatus: (feature, enabled) => `${settingsFeatureNameEn(feature)}\n\nStatus: ${enabled ? 'Enabled' : 'Disabled'}`,
+    settingsFeatureStatus: (feature, enabled, mode, deletePrevious) => `${settingsFeatureNameEn(feature)}\n\nStatus: ${enabled ? 'Enabled' : 'Disabled'}${feature === 'rules' ? '' : `\nMode: ${mode === 'always' ? 'Always send' : 'Send first entry'}\nDelete previous message: ${deletePrevious ? 'Enabled' : 'Disabled'}`}`,
     settingsFeatureEditButton: 'Edit',
     settingsFeatureDisableButton: 'Disable',
+    settingsFeatureActivateButton: 'Enable',
+    settingsFeatureAlwaysButton: 'Always send',
+    settingsFeatureFirstEntryButton: 'Send first entry',
+    settingsFeatureDeletePreviousButton: 'Delete previous message',
     settingsFeaturePrompt: (feature) => `Send the new ${settingsFeatureNameEn(feature).toLowerCase()} text. Send /cancel to stop.`,
     settingsFeatureUpdated: (feature, enabled) => `${settingsFeatureNameEn(feature)} ${enabled ? 'enabled' : 'disabled'}.`,
     settingsFeatureTooLong: 'This text is too long for Telegram or the selected feature. Shorten it and try again.',
@@ -120,9 +128,13 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsWebAppButton: 'Abrir app de configurações',
     settingsLanguagePrompt: 'Escolha o idioma do grupo:',
     settingsTimeZonePrompt: 'Escolha um fuso horário comum. Use o comando para outro fuso IANA compatível.',
-    settingsFeatureStatus: (feature, enabled) => `${settingsFeatureNamePt(feature)}\n\nStatus: ${enabled ? 'Ativado' : 'Desativado'}`,
+    settingsFeatureStatus: (feature, enabled, mode, deletePrevious) => `${settingsFeatureNamePt(feature)}\n\nStatus: ${enabled ? 'Ativado' : 'Desativado'}${feature === 'rules' ? '' : `\nModo: ${mode === 'always' ? 'Sempre enviar' : 'Enviar 1ª entrada'}\nDeletar a última mensagem: ${deletePrevious ? 'Ativado' : 'Desativado'}`}`,
     settingsFeatureEditButton: 'Editar',
     settingsFeatureDisableButton: 'Desativar',
+    settingsFeatureActivateButton: 'Ativar',
+    settingsFeatureAlwaysButton: 'Sempre enviar',
+    settingsFeatureFirstEntryButton: 'Enviar 1ª entrada',
+    settingsFeatureDeletePreviousButton: 'Deletar a última mensagem',
     settingsFeaturePrompt: (feature) => `Envie o novo texto de ${settingsFeatureNamePt(feature).toLowerCase()}. Envie /cancel para cancelar.`,
     settingsFeatureUpdated: (feature, enabled) => `${settingsFeatureNamePt(feature)} ${enabled ? 'ativada' : 'desativada'}.`,
     settingsFeatureTooLong: 'Esse texto é longo demais para o Telegram ou para o recurso selecionado. Reduza o texto e tente novamente.',
@@ -171,9 +183,13 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsWebAppButton: 'Abrir app de ajustes',
     settingsLanguagePrompt: 'Elige el idioma del grupo:',
     settingsTimeZonePrompt: 'Elige una zona horaria común. Usa el comando para otra zona IANA compatible.',
-    settingsFeatureStatus: (feature, enabled) => `${settingsFeatureNameEs(feature)}\n\nEstado: ${enabled ? 'Activado' : 'Desactivado'}`,
+    settingsFeatureStatus: (feature, enabled, mode, deletePrevious) => `${settingsFeatureNameEs(feature)}\n\nEstado: ${enabled ? 'Activado' : 'Desactivado'}${feature === 'rules' ? '' : `\nModo: ${mode === 'always' ? 'Enviar siempre' : 'Enviar primera entrada'}\nEliminar el último mensaje: ${deletePrevious ? 'Activado' : 'Desactivado'}`}`,
     settingsFeatureEditButton: 'Editar',
     settingsFeatureDisableButton: 'Desactivar',
+    settingsFeatureActivateButton: 'Activar',
+    settingsFeatureAlwaysButton: 'Enviar siempre',
+    settingsFeatureFirstEntryButton: 'Enviar primera entrada',
+    settingsFeatureDeletePreviousButton: 'Eliminar el último mensaje',
     settingsFeaturePrompt: (feature) => `Envía el nuevo texto de ${settingsFeatureNameEs(feature).toLowerCase()}. Envía /cancel para cancelar.`,
     settingsFeatureUpdated: (feature, enabled) => `${settingsFeatureNameEs(feature)} ${enabled ? 'activada' : 'desactivada'}.`,
     settingsFeatureTooLong: 'Este texto es demasiado largo para Telegram o para la función seleccionada. Acórtalo y vuelve a intentarlo.',
