@@ -8,3 +8,12 @@ minimumReleaseAgeStrict: true
 overrides:
   '@types/node': 24.13.4
   '@esbuild-kit/core-utils>esbuild': 0.25.12
+
+# React 19 compatibility is exercised by the webapp typecheck, build, and browser smoke test.
+# Remove these narrow exceptions when upstream widens its peer ranges.
+peerDependencyRules:
+  allowedVersions:
+    '@telegram-apps/telegram-ui@2.1.13>react': '19.3.0'
+    '@telegram-apps/telegram-ui@2.1.13>react-dom': '19.3.0'
+    '@xelene/vaul-with-scroll-fix@0.1.4>react': '19.3.0'
+    '@xelene/vaul-with-scroll-fix@0.1.4>react-dom': '19.3.0'

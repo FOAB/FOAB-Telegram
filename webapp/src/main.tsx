@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 import { createRoot } from 'react-dom/client';
+import { AppRoot, Button, Cell, Switch } from '@telegram-apps/telegram-ui';
+import '@telegram-apps/telegram-ui/dist/styles.css';
 import {
   WebAppApiClient,
   WebAppApiError,
@@ -19,6 +21,7 @@ import {
 } from './api.js';
 import {
   IconArrowLeft,
+  IconCheck,
   IconChevronRight,
   IconDoorExit,
   IconFileText,
@@ -194,7 +197,8 @@ function PageShell({
   readonly webApp: TelegramWebAppBridge | null;
 }): ReactElement {
   return (
-    <main className="app-shell">
+    <AppRoot className="foab-ui-root" appearance={webApp?.colorScheme ?? 'dark'}>
+      <main className="app-shell">
       <header className="app-header">
         <div className="app-mark" aria-hidden="true">F</div>
         <div className="app-header-copy">
@@ -213,7 +217,8 @@ function PageShell({
         )}
       </header>
       {children}
-    </main>
+      </main>
+    </AppRoot>
   );
 }
 
@@ -307,19 +312,18 @@ function GroupsView({
       ) : (
         <div className="settings-list group-list">
           {visibleGroups.map((group) => (
-            <button
+            <Cell
               className="settings-list-row group-list-row"
               key={group.chatId}
+              Component="button"
               type="button"
               onClick={() => onSelect(group.chatId)}
+              before={<div className="group-icon" aria-hidden="true">{group.title.slice(0, 1).toUpperCase()}</div>}
+              subtitle={group.username ? `@${group.username}` : messages.groupType(group.chatType)}
+              after={<IconChevronRight className="settings-list-row-chevron" aria-hidden="true" size={22} stroke={1.7} />}
             >
-              <div className="group-icon" aria-hidden="true">{group.title.slice(0, 1).toUpperCase()}</div>
-              <span className="settings-list-row-copy">
-                <strong>{group.title}</strong>
-                <span>{group.username ? `@${group.username}` : messages.groupType(group.chatType)}</span>
-              </span>
-              <IconChevronRight className="settings-list-row-chevron" aria-hidden="true" size={22} stroke={1.7} />
-            </button>
+              {group.title}
+            </Cell>
           ))}
         </div>
       )}
@@ -399,19 +403,17 @@ function BotSettingsView({
           <h3>{messages.privateSettingsSectionTitle}</h3>
         </div>
         <form className="settings-form" onSubmit={save}>
-          <label>
-            <span>{messages.privateLanguageLabel}</span>
-            <select value={selectedLocale} onChange={(event) => setSelectedLocale(event.target.value as UiLocale)}>
-              {(Object.keys(messages.localeNames) as UiLocale[]).map((option) => (
-                <option key={option} value={option}>{messages.localeNames[option]}</option>
-              ))}
-            </select>
-          </label>
+          <ChoiceList
+            label={messages.privateLanguageLabel}
+            options={(['en-US', 'pt-BR', 'es-ES'] as const).map((value) => ({ value, label: messages.localeNames[value] }))}
+            selected={selectedLocale}
+            onChange={setSelectedLocale}
+          />
           <p className="field-help">{messages.privateLanguageHelp}</p>
           {feedback && <p className="form-feedback" role="status">{feedback}</p>}
-          <button className="primary-button" type="submit" disabled={saving}>
+          <Button className="foab-save-button" mode="filled" size="l" stretched type="submit" loading={saving} disabled={saving}>
             {saving ? messages.saving : messages.save}
-          </button>
+          </Button>
         </form>
       </div>
     </section>
@@ -549,23 +551,18 @@ function SettingsView({
       <form className="settings-form" onSubmit={save}>
         {section === 'general' && (
           <>
-            <label>
-              <span>{messages.language}</span>
-              <select value={locale} onChange={(event) => setLocale(event.target.value as UiLocale)}>
-                {(Object.keys(messages.localeNames) as UiLocale[]).map((option) => (
-                  <option key={option} value={option}>{messages.localeNames[option]}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>{messages.timeZone}</span>
-              <select value={timeZone} onChange={(event) => setTimeZone(event.target.value)}>
-                {!TIME_ZONE_OPTIONS.includes(timeZone as typeof TIME_ZONE_OPTIONS[number]) && (
-                  <option value={timeZone}>{timeZone}</option>
-                )}
-                {TIME_ZONE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </label>
+            <ChoiceList
+              label={messages.language}
+              options={(['en-US', 'pt-BR', 'es-ES'] as const).map((value) => ({ value, label: messages.localeNames[value] }))}
+              selected={locale}
+              onChange={setLocale}
+            />
+            <ChoiceList
+              label={messages.timeZone}
+              options={[...new Set([timeZone, ...TIME_ZONE_OPTIONS])].map((value) => ({ value, label: value }))}
+              selected={timeZone}
+              onChange={setTimeZone}
+            />
             <p className="field-help">{messages.timezoneHelp}</p>
           </>
         )}
@@ -584,9 +581,9 @@ function SettingsView({
           </>
         )}
         {feedback && <p className="form-feedback" role="status">{feedback}</p>}
-        <button className="primary-button" type="submit" disabled={saving}>
+        <Button className="foab-save-button" mode="filled" size="l" stretched type="submit" loading={saving} disabled={saving}>
           {saving ? messages.saving : messages.save}
-        </button>
+        </Button>
       </form>
     </section>
   );
@@ -667,15 +664,66 @@ function SettingsListRow({
   readonly onClick: () => void;
 }): ReactElement {
   return (
-    <button className="settings-list-row" type="button" onClick={onClick}>
-      <span className="settings-list-row-icon">{icon}</span>
-      <span className="settings-list-row-copy">
-        <strong>{title}</strong>
-        {summary && <span>{summary}</span>}
-      </span>
-      {meta && <span className="settings-list-row-meta">{meta}</span>}
-      <IconChevronRight className="settings-list-row-chevron" aria-hidden="true" size={22} stroke={1.7} />
-    </button>
+    <Cell
+      className="settings-list-row"
+      Component="button"
+      type="button"
+      onClick={onClick}
+      before={<span className="settings-list-row-icon">{icon}</span>}
+      subtitle={summary}
+      after={<span className="settings-list-row-meta">{meta}<IconChevronRight className="settings-list-row-chevron" aria-hidden="true" size={22} stroke={1.7} /></span>}
+    >
+      {title}
+    </Cell>
+  );
+}
+
+/** Telegram-style choice rows avoid native WebView dropdown rendering. */
+function ChoiceList<T extends string>({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  readonly label: string;
+  readonly options: readonly { readonly value: T; readonly label: string }[];
+  readonly selected: T;
+  readonly onChange: (value: T) => void;
+}): ReactElement {
+  return (
+    <div className="choice-field" role="radiogroup" aria-label={label}>
+      <strong className="choice-field-label">{label}</strong>
+      <div className="choice-list">
+        {options.map((option, index) => (
+          <Cell
+            key={option.value}
+            className="choice-row"
+            Component="button"
+            type="button"
+            role="radio"
+            aria-checked={selected === option.value}
+            tabIndex={selected === option.value ? 0 : -1}
+            onClick={() => onChange(option.value)}
+            onKeyDown={(event) => {
+              const nextIndex = event.key === 'ArrowDown' || event.key === 'ArrowRight'
+                ? (index + 1) % options.length
+                : event.key === 'ArrowUp' || event.key === 'ArrowLeft'
+                  ? (index - 1 + options.length) % options.length
+                  : null;
+              if (nextIndex === null) return;
+              event.preventDefault();
+              const next = options[nextIndex];
+              if (!next) return;
+              onChange(next.value);
+              event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[nextIndex]?.focus();
+            }}
+            after={selected === option.value ? <IconCheck aria-hidden="true" size={20} stroke={2.2} /> : null}
+          >
+            {option.label}
+          </Cell>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -794,17 +842,23 @@ function MessageFeatureView({
             {messages.messageModeFirstEntry}
           </button>
         </div>
-        <button
-          className={`feature-option feature-option-wide ${deletePrevious ? 'feature-option-active' : ''}`}
-          type="button"
-          onClick={() => {
-            const nextValue = !deletePrevious;
-            onDeletePreviousChange(nextValue);
-            saveFeatureDraft({ [deleteField]: nextValue });
-          }}
+        <Cell
+          className="feature-switch-row"
+          Component="label"
+          after={
+            <Switch
+              checked={deletePrevious}
+              disabled={saving}
+              onChange={(event) => {
+                const nextValue = event.target.checked;
+                onDeletePreviousChange(nextValue);
+                saveFeatureDraft({ [deleteField]: nextValue });
+              }}
+            />
+          }
         >
-          {messages.deletePreviousMessage}: {deletePrevious ? messages.deletePreviousOn : messages.deletePreviousOff}
-        </button>
+          {messages.deletePreviousMessage}
+        </Cell>
       </div>
       {editorOpen && (
         <form

@@ -55,7 +55,7 @@ The product capabilities below remain unfinished unless their own status says ot
 - [ ] **F-021 · P1 — Warnings.** Weighted warnings, expiry, thresholds, reset/list, and configured terminal action; concurrent threshold crossings produce one sanction.
 - [ ] **F-038 · P2 — Scoped exemptions.** Exempt users from a selected module for a reason and optional duration; an exemption grants neither admin authority nor blanket immunity.
 - [ ] **F-044 · P2 — Batch sanction cleanup.** Preview and revalidate known targets before batch unmute/unban/removal; distinguish unavailable targets without guessing from display names.
-- [ ] **F-062 · P2 — Cases, appeals, and review.** Audited state transitions, restricted evidence, deadlines, reviewers, and decisions; filing an appeal does not itself undo a sanction.
+- [ ] **F-062 · P2 — Cases, appeals, and review.** Support distinct ban, mute, and kick appeals with authenticated applicants, group-scoped cases, restricted evidence, deadlines, reviewers, audited decisions, and abuse controls. Filing an appeal does not undo a sanction. An approved kick appeal may authorize a new invite or join request, but cannot reverse a completed kick automatically.
 
 ## Protection policies
 
@@ -117,6 +117,7 @@ The product capabilities below remain unfinished unless their own status says ot
 - [ ] **F-066 · P3 — Structured rich messages.** Render supported structured content with a readable text fallback that preserves its meaning.
 - [ ] **F-067 · P3 — Guest mode and bot-to-bot integration.** Read/automation access requires explicit allowlists, capability limits, rate/loop controls, and audit; no authority is inherited implicitly.
 - [ ] **F-070 · P3 — Optional newer Telegram capabilities.** Evaluate checklists, member tags, communities, channel direct messages, stories, and similar API additions behind capability checks; each addition must extend an existing owner unless a distinct lifecycle is justified.
+- [ ] **F-073 · P3 — Group plugin marketplace and developer API.** Allow authorized group owners to discover, install, configure, disable, and revoke versioned plugins through the Mini App and bot-button fallback. Define reviewed manifests, scoped event subscriptions and capabilities, per-group consent, quotas, audit, secret custody, egress policy, and isolated execution before accepting third-party code. A Minecraft server status notifier is a sample read-only integration; plugins must never inherit bot administrator powers or access other groups' data.
 
 ## Portability, privacy, and optional payments
 

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tabler/icons-react": "3.46.0",
+    "@telegram-apps/telegram-ui": "2.1.13",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

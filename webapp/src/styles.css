@@ -28,6 +28,20 @@ body {
   color: var(--foab-text-color);
 }
 
+.foab-ui-root {
+  min-height: 100vh;
+  background: var(--foab-bg-color);
+  color: var(--foab-text-color);
+  --tgui--bg_color: var(--foab-bg-color);
+  --tgui--section_bg_color: var(--foab-card-color);
+  --tgui--secondary_bg_color: var(--foab-secondary-bg-color);
+  --tgui--text_color: var(--foab-text-color);
+  --tgui--hint_color: var(--foab-muted-color);
+  --tgui--button_color: var(--foab-accent-color);
+  --tgui--button_text_color: var(--foab-accent-text-color);
+  --tgui--link_color: var(--foab-accent-color);
+}
+
 button,
 select,
 textarea {
@@ -331,6 +345,7 @@ button:disabled {
 
 .settings-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--foab-muted-color) 16%, transparent);
   border-radius: 16px;
@@ -350,6 +365,22 @@ button:disabled {
   color: var(--foab-text-color);
   text-align: left;
   transition: background 120ms ease;
+}
+
+.settings-list-row .settings-list-row-meta {
+  gap: 6px;
+}
+
+.settings-list-row > div:nth-of-type(2) {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.settings-list-row > div:nth-of-type(2) h6 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-list-row:last-child {
@@ -566,6 +597,66 @@ button:disabled {
   border-color: color-mix(in srgb, var(--foab-muted-color) 18%, transparent);
   border-radius: 16px;
   background: var(--foab-card-color);
+}
+
+.choice-field {
+  display: grid;
+  gap: 9px;
+}
+
+.choice-field-label {
+  font-size: 14px;
+}
+
+.choice-list {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--foab-muted-color) 22%, transparent);
+  border-radius: 12px;
+  background: var(--foab-secondary-bg-color);
+}
+
+.choice-row {
+  width: 100%;
+  min-height: 48px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foab-muted-color) 14%, transparent);
+  background: var(--foab-secondary-bg-color);
+  color: var(--foab-text-color);
+  text-align: left;
+}
+
+.choice-row:last-child {
+  border-bottom: 0;
+}
+
+.choice-row:hover,
+.choice-row:focus-visible {
+  background: color-mix(in srgb, var(--foab-accent-color) 9%, var(--foab-secondary-bg-color));
+}
+
+.choice-row[aria-checked="true"] {
+  color: var(--foab-accent-color);
+}
+
+.choice-row[aria-checked="true"] svg {
+  color: var(--foab-accent-color);
+}
+
+.choice-row:focus-visible,
+.settings-list-row:focus-visible {
+  outline: 2px solid var(--foab-accent-color);
+  outline-offset: -2px;
+}
+
+.foab-save-button {
+  width: 100%;
+}
+
+.feature-switch-row {
+  min-height: 56px;
+  border: 1px solid color-mix(in srgb, var(--foab-muted-color) 18%, transparent);
+  border-radius: 12px;
+  background: var(--foab-card-color);
+  color: var(--foab-text-color);
 }
 
 .settings-form label {
