@@ -1,0 +1,43 @@
+# Mini App design QA
+
+## Source visual truth
+
+- Source screenshot: `C:\Users\louan\AppData\Local\Temp\codex-clipboard-cee04a00-76a7-4442-a6c8-ff8ad19b6321.png`
+- Source state: authenticated group settings form in the Telegram Mini App, pt-BR locale, narrow mobile viewport.
+- Source dimensions: 461 × 709 pixels. Device pixel ratio was not available in the attachment metadata.
+
+## Implementation evidence
+
+- Local implementation: `http://127.0.0.1:4173/`
+- Browser-rendered state: FOAB shell and recoverable error state were captured in the Codex in-app browser at its default viewport.
+- Implementation screenshot file: not persisted; the browser capture was inspected directly during QA.
+- The authenticated group settings state could not be reached because the local browser session was outside Telegram and had no signed Mini App session.
+
+## Comparison
+
+The source shows the previous single long form. The implementation now has a group settings menu with separate General, Messages, and Rules category actions, plus focused editor states for each category. The local browser confirmed the shell renders and the error state is readable, but it could not provide a same-state authenticated capture for the new category menu.
+
+The following surfaces were checked against the existing Telegram-like tokens and the attached reference:
+
+- Typography: system sans-serif, bold section hierarchy, and muted helper text are preserved.
+- Spacing and layout: the long form is split into touch-sized category cards and focused forms with consistent gaps and rounded containers.
+- Colors and tokens: the existing dark Telegram palette and blue accent remain in use.
+- Image quality and assets: the reference uses the existing FOAB group mark; no new decorative image asset was required for this navigation pass.
+- Copy and content: the new navigation copy is present in en-US, pt-BR, and es-ES catalogs.
+
+## Findings
+
+- No P0, P1, or P2 issue was observable in the shell or error state.
+- Same-state authenticated visual comparison is blocked by the missing Telegram `initData` session in the local browser.
+
+## Primary interactions tested
+
+- Local Mini App shell loaded at the Vite URL.
+- Error state rendered with a retry action.
+- TypeScript and production bundle completed successfully.
+
+## Final result
+
+final result: blocked
+
+Blocker: the authenticated group menu and its category navigation require launch from Telegram, so the rendered category state still needs a real Mini App session check after deployment or local Telegram launch.

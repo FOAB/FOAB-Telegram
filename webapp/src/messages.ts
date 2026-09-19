@@ -15,6 +15,13 @@ export interface UiMessages {
   readonly groupType: (type: 'group' | 'supergroup') => string;
   readonly configure: string;
   readonly settingsTitle: string;
+  readonly settingsHomeSubtitle: string;
+  readonly generalTitle: string;
+  readonly generalHelp: string;
+  readonly messagesTitle: string;
+  readonly messagesHelp: string;
+  readonly rulesTitle: string;
+  readonly rulesCategoryHelp: string;
   readonly language: string;
   readonly timeZone: string;
   readonly welcomeMessage: string;
@@ -27,6 +34,8 @@ export interface UiMessages {
   readonly saving: string;
   readonly saved: string;
   readonly back: string;
+  readonly backToSettings: string;
+  readonly open: string;
   readonly close: string;
   readonly reload: string;
   readonly selectGroup: string;
@@ -52,6 +61,13 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupType: (type) => type === 'supergroup' ? 'Supergroup' : 'Group',
     configure: 'Configure',
     settingsTitle: 'Group settings',
+    settingsHomeSubtitle: 'Choose a category to manage this group.',
+    generalTitle: 'General',
+    generalHelp: 'Language and time zone',
+    messagesTitle: 'Messages',
+    messagesHelp: 'Welcome and goodbye messages',
+    rulesTitle: 'Rules',
+    rulesCategoryHelp: 'Publish the rules members can read',
     language: 'Language',
     timeZone: 'Time zone',
     welcomeMessage: 'Welcome message',
@@ -64,6 +80,8 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     saving: 'Saving…',
     saved: 'Changes saved.',
     back: 'Back to groups',
+    backToSettings: 'Back to settings',
+    open: 'Open',
     close: 'Close',
     reload: 'Reload',
     selectGroup: 'Select a group',
@@ -87,6 +105,13 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
     configure: 'Configurar',
     settingsTitle: 'Configurações do grupo',
+    settingsHomeSubtitle: 'Escolha uma categoria para gerenciar este grupo.',
+    generalTitle: 'Geral',
+    generalHelp: 'Idioma e fuso horário',
+    messagesTitle: 'Mensagens',
+    messagesHelp: 'Mensagens de boas-vindas e despedida',
+    rulesTitle: 'Regras',
+    rulesCategoryHelp: 'Publique as regras que os membros podem consultar',
     language: 'Idioma',
     timeZone: 'Fuso horário',
     welcomeMessage: 'Mensagem de boas-vindas',
@@ -99,6 +124,8 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     saving: 'Salvando…',
     saved: 'Alterações salvas.',
     back: 'Voltar aos grupos',
+    backToSettings: 'Voltar às configurações',
+    open: 'Abrir',
     close: 'Fechar',
     reload: 'Recarregar',
     selectGroup: 'Selecione um grupo',
@@ -122,6 +149,13 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
     configure: 'Configurar',
     settingsTitle: 'Ajustes del grupo',
+    settingsHomeSubtitle: 'Elige una categoría para administrar este grupo.',
+    generalTitle: 'General',
+    generalHelp: 'Idioma y zona horaria',
+    messagesTitle: 'Mensajes',
+    messagesHelp: 'Mensajes de bienvenida y despedida',
+    rulesTitle: 'Reglas',
+    rulesCategoryHelp: 'Publica las reglas que pueden consultar los miembros',
     language: 'Idioma',
     timeZone: 'Zona horaria',
     welcomeMessage: 'Mensaje de bienvenida',
@@ -134,6 +168,8 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     saving: 'Guardando…',
     saved: 'Cambios guardados.',
     back: 'Volver a los grupos',
+    backToSettings: 'Volver a los ajustes',
+    open: 'Abrir',
     close: 'Cerrar',
     reload: 'Recargar',
     selectGroup: 'Selecciona un grupo',

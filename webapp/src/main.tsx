@@ -16,11 +16,20 @@ import {
   type GroupSettingsUpdate,
   type SessionState,
 } from './api.js';
+import {
+  IconArrowLeft,
+  IconChevronRight,
+  IconListCheck,
+  IconMessage,
+  IconSettings,
+  IconX,
+} from '@tabler/icons-react';
 import { getUiMessages, localeFromLanguageCode, type UiLocale } from './messages.js';
 import { initializeTelegramWebApp, type TelegramWebAppBridge } from './telegram-webapp.js';
 import './styles.css';
 
 const TIME_ZONE_OPTIONS = ['UTC', 'America/Sao_Paulo', 'America/New_York', 'Europe/Lisbon'] as const;
+type SettingsSection = 'home' | 'general' | 'messages' | 'rules';
 
 /** Root application for the private FOAB administration Mini App. */
 function App(): ReactElement {
@@ -29,6 +38,7 @@ function App(): ReactElement {
   const [session, setSession] = useState<SessionState | null>(null);
   const [groups, setGroups] = useState<readonly GroupSettings[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('home');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +65,7 @@ function App(): ReactElement {
       setSelectedChatId((current) => current && currentGroups.some((group) => group.chatId === current)
         ? current
         : null);
+      setSettingsSection('home');
     } catch (loadError: unknown) {
       setSession(null);
       setGroups([]);
@@ -73,7 +84,13 @@ function App(): ReactElement {
     if (!backButton || (webApp.isVersionAtLeast && !webApp.isVersionAtLeast('6.1'))) {
       return;
     }
-    const handleBack = () => setSelectedChatId(null);
+    const handleBack = () => {
+      if (settingsSection !== 'home') {
+        setSettingsSection('home');
+      } else {
+        setSelectedChatId(null);
+      }
+    };
     if (selectedChatId) {
       backButton.show();
       backButton.onClick(handleBack);
@@ -81,7 +98,7 @@ function App(): ReactElement {
       backButton.hide();
     }
     return () => backButton.offClick(handleBack);
-  }, [selectedChatId, webApp]);
+  }, [selectedChatId, settingsSection, webApp]);
 
   const locale = localeFromLanguageCode(session?.user.languageCode ?? null);
   const messages = getUiMessages(locale);
@@ -108,7 +125,12 @@ function App(): ReactElement {
           api={api}
           group={selectedGroup}
           messages={messages}
-          onBack={() => setSelectedChatId(null)}
+          section={settingsSection}
+          onBack={() => {
+            setSelectedChatId(null);
+            setSettingsSection('home');
+          }}
+          onSectionChange={setSettingsSection}
           onSaved={(updated) => {
             setGroups((current) => current.map((group) => group.chatId === updated.chatId ? updated : group));
           }}
@@ -118,7 +140,15 @@ function App(): ReactElement {
   }
   return (
     <PageShell messages={messages} webApp={webApp}>
-      <GroupsView groups={groups} messages={messages} onSelect={setSelectedChatId} onReload={() => void load()} />
+      <GroupsView
+        groups={groups}
+        messages={messages}
+        onSelect={(chatId) => {
+          setSelectedChatId(chatId);
+          setSettingsSection('home');
+        }}
+        onReload={() => void load()}
+      />
     </PageShell>
   );
 }
@@ -148,7 +178,7 @@ function PageShell({
             type="button"
             onClick={() => webApp.close?.()}
           >
-            ×
+            <IconX aria-hidden="true" size={22} stroke={1.8} />
           </button>
         )}
       </header>
@@ -228,13 +258,17 @@ function SettingsView({
   api,
   group,
   messages,
+  section,
   onBack,
+  onSectionChange,
   onSaved,
 }: {
   readonly api: WebAppApiClient;
   readonly group: GroupSettings;
   readonly messages: ReturnType<typeof getUiMessages>;
+  readonly section: SettingsSection;
   readonly onBack: () => void;
+  readonly onSectionChange: (section: SettingsSection) => void;
   readonly onSaved: (group: GroupSettings) => void;
 }): ReactElement {
   const [locale, setLocale] = useState<UiLocale>(group.locale);
@@ -252,6 +286,17 @@ function SettingsView({
     setGoodbyeMessage(group.goodbyeMessage ?? '');
     setRulesText(group.rulesText ?? '');
   }, [group]);
+
+  if (section === 'home') {
+    return (
+      <SettingsHomeView
+        group={group}
+        messages={messages}
+        onBack={onBack}
+        onOpen={onSectionChange}
+      />
+    );
+  }
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -284,63 +329,78 @@ function SettingsView({
 
   return (
     <section className="content-section" aria-labelledby="settings-title">
-      <button className="text-button back-button" type="button" onClick={onBack}>← {messages.back}</button>
+      <button className="text-button back-button" type="button" onClick={() => onSectionChange('home')}>
+        <IconArrowLeft aria-hidden="true" size={18} stroke={2} />
+        {messages.backToSettings}
+      </button>
       <div className="settings-heading">
         <div className="group-icon large" aria-hidden="true">{group.title.slice(0, 1).toUpperCase()}</div>
         <div>
-          <h2 id="settings-title">{group.title}</h2>
-          <p>{messages.settingsTitle}</p>
+          <h2 id="settings-title">{sectionTitle(section, messages)}</h2>
+          <p>{group.title}</p>
         </div>
       </div>
       <form className="settings-form" onSubmit={save}>
-        <label>
-          <span>{messages.language}</span>
-          <select value={locale} onChange={(event) => setLocale(event.target.value as UiLocale)}>
-            {(Object.keys(messages.localeNames) as UiLocale[]).map((option) => (
-              <option key={option} value={option}>{messages.localeNames[option]}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>{messages.timeZone}</span>
-          <select value={timeZone} onChange={(event) => setTimeZone(event.target.value)}>
-            {!TIME_ZONE_OPTIONS.includes(timeZone as typeof TIME_ZONE_OPTIONS[number]) && (
-              <option value={timeZone}>{timeZone}</option>
-            )}
-            {TIME_ZONE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-          </select>
-        </label>
-        <p className="field-help">{messages.timezoneHelp}</p>
-        <label>
-          <span>{messages.welcomeMessage}</span>
-          <textarea
-            maxLength={4096}
-            rows={4}
-            value={welcomeMessage}
-            onChange={(event) => setWelcomeMessage(event.target.value)}
-          />
-        </label>
-        <p className="field-help">{messages.welcomeHelp}</p>
-        <label>
-          <span>{messages.goodbyeMessage}</span>
-          <textarea
-            maxLength={4096}
-            rows={4}
-            value={goodbyeMessage}
-            onChange={(event) => setGoodbyeMessage(event.target.value)}
-          />
-        </label>
-        <p className="field-help">{messages.goodbyeHelp}</p>
-        <label>
-          <span>{messages.rulesText}</span>
-          <textarea
-            maxLength={3800}
-            rows={7}
-            value={rulesText}
-            onChange={(event) => setRulesText(event.target.value)}
-          />
-        </label>
-        <p className="field-help">{messages.rulesHelp}</p>
+        {section === 'general' && (
+          <>
+            <label>
+              <span>{messages.language}</span>
+              <select value={locale} onChange={(event) => setLocale(event.target.value as UiLocale)}>
+                {(Object.keys(messages.localeNames) as UiLocale[]).map((option) => (
+                  <option key={option} value={option}>{messages.localeNames[option]}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{messages.timeZone}</span>
+              <select value={timeZone} onChange={(event) => setTimeZone(event.target.value)}>
+                {!TIME_ZONE_OPTIONS.includes(timeZone as typeof TIME_ZONE_OPTIONS[number]) && (
+                  <option value={timeZone}>{timeZone}</option>
+                )}
+                {TIME_ZONE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <p className="field-help">{messages.timezoneHelp}</p>
+          </>
+        )}
+        {section === 'messages' && (
+          <>
+            <label>
+              <span>{messages.welcomeMessage}</span>
+              <textarea
+                maxLength={4096}
+                rows={4}
+                value={welcomeMessage}
+                onChange={(event) => setWelcomeMessage(event.target.value)}
+              />
+            </label>
+            <p className="field-help">{messages.welcomeHelp}</p>
+            <label>
+              <span>{messages.goodbyeMessage}</span>
+              <textarea
+                maxLength={4096}
+                rows={4}
+                value={goodbyeMessage}
+                onChange={(event) => setGoodbyeMessage(event.target.value)}
+              />
+            </label>
+            <p className="field-help">{messages.goodbyeHelp}</p>
+          </>
+        )}
+        {section === 'rules' && (
+          <>
+            <label>
+              <span>{messages.rulesText}</span>
+              <textarea
+                maxLength={3800}
+                rows={7}
+                value={rulesText}
+                onChange={(event) => setRulesText(event.target.value)}
+              />
+            </label>
+            <p className="field-help">{messages.rulesHelp}</p>
+          </>
+        )}
         {feedback && <p className="form-feedback" role="status">{feedback}</p>}
         <button className="primary-button" type="submit" disabled={saving}>
           {saving ? messages.saving : messages.save}
@@ -348,6 +408,78 @@ function SettingsView({
       </form>
     </section>
   );
+}
+
+/** Presents the category menu before any group setting is edited. */
+function SettingsHomeView({
+  group,
+  messages,
+  onBack,
+  onOpen,
+}: {
+  readonly group: GroupSettings;
+  readonly messages: ReturnType<typeof getUiMessages>;
+  readonly onBack: () => void;
+  readonly onOpen: (section: SettingsSection) => void;
+}): ReactElement {
+  return (
+    <section className="content-section" aria-labelledby="settings-home-title">
+      <button className="text-button back-button" type="button" onClick={onBack}>{messages.back}</button>
+      <div className="settings-heading">
+        <div className="group-icon large" aria-hidden="true">{group.title.slice(0, 1).toUpperCase()}</div>
+        <div>
+          <h2 id="settings-home-title">{group.title}</h2>
+          <p>{messages.settingsTitle}</p>
+        </div>
+      </div>
+      <p className="settings-home-subtitle">{messages.settingsHomeSubtitle}</p>
+      <nav className="settings-category-list" aria-label={messages.settingsTitle}>
+        <CategoryButton icon={<IconSettings aria-hidden="true" size={22} stroke={1.8} />} title={messages.generalTitle} summary={messages.generalHelp} openLabel={messages.open} onClick={() => onOpen('general')} />
+        <CategoryButton icon={<IconMessage aria-hidden="true" size={22} stroke={1.8} />} title={messages.messagesTitle} summary={messages.messagesHelp} openLabel={messages.open} onClick={() => onOpen('messages')} />
+        <CategoryButton icon={<IconListCheck aria-hidden="true" size={22} stroke={1.8} />} title={messages.rulesTitle} summary={messages.rulesCategoryHelp} openLabel={messages.open} onClick={() => onOpen('rules')} />
+      </nav>
+    </section>
+  );
+}
+
+/** Renders one large, touch-friendly category action in the group menu. */
+function CategoryButton({
+  icon,
+  title,
+  summary,
+  openLabel,
+  onClick,
+}: {
+  readonly icon: ReactElement;
+  readonly title: string;
+  readonly summary: string;
+  readonly openLabel: string;
+  readonly onClick: () => void;
+}): ReactElement {
+  return (
+    <button className="settings-category" type="button" onClick={onClick}>
+      <span className="settings-category-icon">{icon}</span>
+      <span className="settings-category-copy">
+        <strong>{title}</strong>
+        <span>{summary}</span>
+      </span>
+      <span className="settings-category-action">
+        <span>{openLabel}</span>
+        <IconChevronRight aria-hidden="true" size={18} stroke={1.8} />
+      </span>
+    </button>
+  );
+}
+
+function sectionTitle(section: Exclude<SettingsSection, 'home'>, messages: ReturnType<typeof getUiMessages>): string {
+  switch (section) {
+    case 'general':
+      return messages.generalTitle;
+    case 'messages':
+      return messages.messagesTitle;
+    case 'rules':
+      return messages.rulesTitle;
+  }
 }
 
 /** Treat whitespace-only content as a deliberate disabled configuration. */

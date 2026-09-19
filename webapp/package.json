@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@tabler/icons-react": "3.46.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

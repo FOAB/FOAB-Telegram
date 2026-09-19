@@ -246,6 +246,9 @@ button:disabled {
 }
 
 .back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   justify-self: start;
 }
 
@@ -253,6 +256,82 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.settings-home-subtitle {
+  max-width: 520px;
+  margin: -6px 0 0;
+  color: var(--foab-muted-color);
+  line-height: 1.5;
+}
+
+.settings-category-list {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-category {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 76px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--foab-muted-color) 18%, transparent);
+  border-radius: 16px;
+  background: var(--foab-card-color);
+  color: var(--foab-text-color);
+  text-align: left;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+
+.settings-category:hover {
+  border-color: color-mix(in srgb, var(--foab-accent-color) 65%, transparent);
+  background: color-mix(in srgb, var(--foab-accent-color) 8%, var(--foab-card-color));
+  transform: translateY(-1px);
+}
+
+.settings-category-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--foab-accent-color) 20%, transparent);
+  color: var(--foab-accent-color);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.settings-category-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+
+.settings-category-copy strong {
+  font-size: 16px;
+}
+
+.settings-category-copy span {
+  overflow: hidden;
+  color: var(--foab-muted-color);
+  font-size: 14px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-category-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  color: var(--foab-accent-color);
+  font-size: 14px;
+  font-weight: 650;
 }
 
 .settings-form {
@@ -322,6 +401,14 @@ button:disabled {
 
   .group-card .secondary-button {
     width: 100%;
+  }
+
+  .settings-category {
+    gap: 10px;
+  }
+
+  .settings-category-action {
+    display: none;
   }
 }
 
