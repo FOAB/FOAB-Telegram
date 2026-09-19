@@ -18,6 +18,12 @@ export interface UiMessages {
   readonly groupType: (type: 'group' | 'supergroup') => string;
   readonly settingsTitle: string;
   readonly settingsHomeSubtitle: string;
+  readonly botSettingsTitle: string;
+  readonly botSettingsButton: string;
+  readonly botSettingsDescription: string;
+  readonly privateSettingsSectionTitle: string;
+  readonly privateLanguageLabel: string;
+  readonly privateLanguageHelp: string;
   readonly settingsListTitle: string;
   readonly generalTitle: string;
   readonly generalHelp: string;
@@ -82,6 +88,12 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupType: (type) => type === 'supergroup' ? 'Supergroup' : 'Group',
     settingsTitle: 'Group settings',
     settingsHomeSubtitle: 'Choose a category to manage this group.',
+    botSettingsTitle: 'Bot settings',
+    botSettingsButton: 'Private settings',
+    botSettingsDescription: 'Language used by FOAB in your private chat.',
+    privateSettingsSectionTitle: 'Private chat',
+    privateLanguageLabel: 'Language',
+    privateLanguageHelp: 'FOAB will use this language when responding to you privately.',
     settingsListTitle: 'Settings',
     generalTitle: 'General',
     generalHelp: 'Language and time zone',
@@ -144,6 +156,12 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
     settingsTitle: 'Configurações do grupo',
     settingsHomeSubtitle: 'Escolha uma categoria para gerenciar este grupo.',
+    botSettingsTitle: 'Configurações do bot',
+    botSettingsButton: 'Configurações privadas',
+    botSettingsDescription: 'Idioma usado pelo FOAB na sua conversa privada.',
+    privateSettingsSectionTitle: 'Conversa privada',
+    privateLanguageLabel: 'Idioma',
+    privateLanguageHelp: 'O FOAB usará este idioma ao responder você no privado.',
     settingsListTitle: 'Configurações',
     generalTitle: 'Geral',
     generalHelp: 'Idioma e fuso horário',
@@ -206,6 +224,12 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
     settingsTitle: 'Ajustes del grupo',
     settingsHomeSubtitle: 'Elige una categoría para administrar este grupo.',
+    botSettingsTitle: 'Ajustes del bot',
+    botSettingsButton: 'Ajustes privados',
+    botSettingsDescription: 'Idioma que FOAB usa en tu conversación privada.',
+    privateSettingsSectionTitle: 'Chat privado',
+    privateLanguageLabel: 'Idioma',
+    privateLanguageHelp: 'FOAB usará este idioma al responderte en privado.',
     settingsListTitle: 'Ajustes',
     generalTitle: 'General',
     generalHelp: 'Idioma y zona horaria',

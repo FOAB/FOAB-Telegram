@@ -28,7 +28,7 @@ A successful response is `201` and contains the authenticated user, a CSRF value
 
 ```json
 {
-  "user": { "id": 1000000001, "languageCode": "pt-BR" },
+  "user": { "id": 1000000001, "languageCode": "pt-BR", "privateLocale": "pt-BR" },
   "csrfToken": "<opaque value>",
   "expiresAt": "<ISO-8601 timestamp>"
 }
@@ -43,6 +43,20 @@ Requires the `foab_session` cookie. It returns the authenticated user and expira
 ### `DELETE /api/session`
 
 Requires the exact origin and a valid CSRF header when a live session cookie is present. It revokes the session and clears both cookies. The operation is idempotent when no session cookie is supplied.
+
+### `PATCH /api/preferences`
+
+Requires a live session, the exact origin, and a valid CSRF header. The preference is scoped to the authenticated Telegram user and the current FOAB installation; the browser cannot select another user or installation.
+
+The body must contain exactly one supported locale:
+
+```json
+{
+  "locale": "es-ES"
+}
+```
+
+The response is `{ "privateLocale": "es-ES" }`. Supported values are `en-US`, `pt-BR`, and `es-ES`. The same value is returned in both session responses and controls the language of FOAB's private-chat replies. Group replies continue to use the selected group's locale.
 
 ## Group settings endpoints
 

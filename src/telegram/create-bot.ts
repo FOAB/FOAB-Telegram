@@ -8,12 +8,14 @@ import {
   type GroupSettingsUpdate,
 } from '../db/group-repository.js';
 import type { UpdateInboxRepository } from '../db/update-inbox-repository.js';
+import type { UserPreferencesRepository } from '../db/user-preferences-repository.js';
 import type { BotGroupStatus } from '../db/schema.js';
 import {
   getHelpMessage,
   getMessages,
   localeFromTelegram,
   supportedLocale,
+  type SupportedLocale,
 } from '../i18n/messages.js';
 import {
   isCurrentGroupAdministrator,
@@ -35,6 +37,8 @@ import {
 import { normalizeTelegramUpdate } from './update-normalizer.js';
 import {
   privateGroupSelectionKeyboard,
+  privateLanguageKeyboard,
+  privateSettingsKeyboard,
   settingsFeatureKeyboard,
   settingsLanguageKeyboard,
   settingsOverviewKeyboard,
@@ -71,6 +75,7 @@ export interface BotLogger {
 export interface BotDependencies {
   readonly installationId: string;
   readonly groups: GroupRepository;
+  readonly preferences: UserPreferencesRepository;
   readonly webAppUrl?: string;
   readonly inbox?: UpdateInboxRepository;
   readonly flows?: ActiveFlowStore;
@@ -241,18 +246,14 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
 
   bot.command('start', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
-    const locale = group
-      ? supportedLocale(group.locale)
-      : localeFromTelegram(context.from?.language_code);
+    const locale = await resolveResponseLocale(context, dependencies, group);
     const messages = getMessages(locale);
     await replyToCommand(context, group ? messages.groupStart : messages.privateStart);
   });
 
   bot.command('help', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
-    const locale = group
-      ? supportedLocale(group.locale)
-      : localeFromTelegram(context.from?.language_code);
+    const locale = await resolveResponseLocale(context, dependencies, group);
     const administrator = group ? await isCurrentGroupAdministrator(context) : false;
     await replyToCommand(
       context,
@@ -262,9 +263,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
 
   bot.command('ping', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
-    const locale = group
-      ? supportedLocale(group.locale)
-      : localeFromTelegram(context.from?.language_code);
+    const locale = await resolveResponseLocale(context, dependencies, group);
     await replyToCommand(context, getMessages(locale).ping);
   });
 
@@ -275,17 +274,13 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     if (!sender || !chat) {
       return;
     }
-    const locale = group
-      ? supportedLocale(group.locale)
-      : localeFromTelegram(sender.language_code);
+    const locale = await resolveResponseLocale(context, dependencies, group);
     await replyToCommand(context, getMessages(locale).id(String(chat.id), sender.id));
   });
 
   bot.command('rules', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
-    const locale = group
-      ? supportedLocale(group.locale)
-      : localeFromTelegram(context.from?.language_code);
+    const locale = await resolveResponseLocale(context, dependencies, group);
     const messages = getMessages(locale);
     await replyToCommand(
       context,
@@ -352,7 +347,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     );
     if (!selectedGroup) {
       flows.cancel(groupKey, feature);
-      await replyToCommand(context, getMessages(localeFromTelegram(sender.language_code)).settingsNotAuthorized);
+      await replyToCommand(context, getMessages(await resolveResponseLocale(context, dependencies, null)).settingsNotAuthorized);
       return;
     }
 
@@ -399,9 +394,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     const settingsCommand = parseSettingsArguments(
       typeof context.match === 'string' ? context.match : '',
     );
-    const locale = group
-      ? supportedLocale(group.locale)
-      : localeFromTelegram(context.from?.language_code);
+    const locale = await resolveResponseLocale(context, dependencies, group);
     const messages = getMessages(locale);
     const chatType = botChatType(context.chat);
     dependencies.logger?.info('telegram_settings_scope_resolved', {
@@ -478,9 +471,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
 
   bot.command('reload', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
-    const locale = group
-      ? supportedLocale(group.locale)
-      : localeFromTelegram(context.from?.language_code);
+    const locale = await resolveResponseLocale(context, dependencies, group);
     const messages = getMessages(locale);
     const chatType = botChatType(context.chat);
     const administrator = group ? await isCurrentGroupAdministrator(context) : false;
@@ -513,9 +504,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
 
   bot.command('cancel', async (context) => {
     const group = await observeCurrentGroup(context, dependencies);
-    const locale = group
-      ? supportedLocale(group.locale)
-      : localeFromTelegram(context.from?.language_code);
+    const locale = await resolveResponseLocale(context, dependencies, group);
     const messages = getMessages(locale);
     if (!group && context.chat?.type === 'private') {
       const selectionKey = getPrivateSelectionKey(context, dependencies.installationId);
@@ -724,36 +713,7 @@ async function handlePrivateSettings(
   }
 
   if (command.kind === 'show') {
-    const activeGroups = await dependencies.groups.listActive(dependencies.installationId, 25);
-    const administratorGroups: GroupRecord[] = [];
-    for (const group of activeGroups) {
-      if (await isGroupAdministrator(context.api, group.telegramChatId, sender.id)) {
-        administratorGroups.push(group);
-      }
-    }
-
-    if (administratorGroups.length === 0) {
-      selections.clear(key);
-      await replyToCommand(context, messages.privateGroupsEmpty);
-      return;
-    }
-
-    selections.set(key, administratorGroups.map((group) => group.telegramChatId));
-    const entries = administratorGroups.map(
-      (group, index) => `${index + 1}. ${safeGroupTitle(group.title)}`,
-    );
-    await replyToCommand(
-      context,
-      `${messages.privateGroupsHeader}\n${messages.privateGroupList(entries)}`,
-      privateGroupSelectionKeyboard(
-        messages,
-        administratorGroups.map((group, index) => ({
-          index: index + 1,
-          title: safeGroupTitle(group.title),
-        })),
-        dependencies.webAppUrl,
-      ),
-    );
+    await renderPrivateGroupSelection(context, dependencies, selections, key, messages, false);
     return;
   }
 
@@ -819,6 +779,54 @@ async function handlePrivateSettings(
   );
 }
 
+/** Renders the private group selector with the bot-level settings entry. */
+async function renderPrivateGroupSelection(
+  context: Context,
+  dependencies: BotDependencies,
+  selections: PrivateGroupSelectionStore,
+  key: PrivateSelectionKey,
+  messages: ReturnType<typeof getMessages>,
+  editExistingMessage: boolean,
+): Promise<void> {
+  const sender = context.from;
+  if (!sender) {
+    return;
+  }
+  const activeGroups = await dependencies.groups.listActive(dependencies.installationId, 25);
+  const administratorGroups: GroupRecord[] = [];
+  for (const group of activeGroups) {
+    if (await isGroupAdministrator(context.api, group.telegramChatId, sender.id)) {
+      administratorGroups.push(group);
+    }
+  }
+
+  if (administratorGroups.length === 0) {
+    selections.clear(key);
+  } else {
+    selections.set(key, administratorGroups.map((group) => group.telegramChatId));
+  }
+
+  const entries = administratorGroups.map(
+    (group, index) => `${index + 1}. ${safeGroupTitle(group.title)}`,
+  );
+  const text = administratorGroups.length === 0
+    ? messages.privateGroupsEmpty
+    : `${messages.privateGroupsHeader}\n${messages.privateGroupList(entries)}`;
+  const markup = privateGroupSelectionKeyboard(
+    messages,
+    administratorGroups.map((group, index) => ({
+      index: index + 1,
+      title: safeGroupTitle(group.title),
+    })),
+    dependencies.webAppUrl,
+  );
+  if (editExistingMessage) {
+    await editSettingsMessage(context, text, markup);
+    return;
+  }
+  await replyToCommand(context, text, markup);
+}
+
 /** Handles one typed settings callback while rechecking the current target scope. */
 async function handleSettingsCallback(
   context: Context,
@@ -878,6 +886,15 @@ async function handleGroupSettingsCallback(
   if (!key) {
     await editSettingsMessage(context, messages.settingsNotAuthorized);
     return messages.settingsNotAuthorized;
+  }
+
+  if (
+    action.kind === 'show-private-settings' ||
+    action.kind === 'show-private-language' ||
+    action.kind === 'set-private-locale' ||
+    action.kind === 'private-settings-back'
+  ) {
+    return null;
   }
 
   if (action.kind === 'close') {
@@ -1003,10 +1020,33 @@ async function handlePrivateSettingsCallback(
 ): Promise<string | null> {
   const key = getPrivateSelectionKey(context, dependencies.installationId);
   const sender = context.from;
-  const messages = getMessages(localeFromTelegram(sender?.language_code));
+  const messages = getMessages(await getPrivateLocale(dependencies, sender));
   if (!key || !sender) {
     await editSettingsMessage(context, messages.settingsNotAuthorized);
     return messages.settingsNotAuthorized;
+  }
+
+  if (action.kind === 'show-private-settings') {
+    await editSettingsMessage(context, messages.privateSettingsTitle, privateSettingsKeyboard(messages));
+    return null;
+  }
+  if (action.kind === 'show-private-language') {
+    await editSettingsMessage(context, messages.privateLanguagePrompt, privateLanguageKeyboard(messages));
+    return null;
+  }
+  if (action.kind === 'set-private-locale') {
+    const privateLocale = await dependencies.preferences.setLocale(
+      dependencies.installationId,
+      sender.id,
+      action.value,
+    );
+    const updatedMessages = getMessages(privateLocale);
+    await editSettingsMessage(context, updatedMessages.privateSettingsTitle, privateSettingsKeyboard(updatedMessages));
+    return updatedMessages.privateSettingsUpdated;
+  }
+  if (action.kind === 'private-settings-back') {
+    await renderPrivateGroupSelection(context, dependencies, selections, key, messages, true);
+    return null;
   }
 
   if (action.kind === 'select-group') {
@@ -1209,6 +1249,29 @@ async function editSettingsMessage(
       reply_markup: markup,
     });
   }
+}
+
+/** Creates a private selection identity from the authenticated private update. */
+async function resolveResponseLocale(
+  context: Context,
+  dependencies: BotDependencies,
+  group: GroupRecord | null,
+): Promise<SupportedLocale> {
+  return group
+    ? supportedLocale(group.locale)
+    : getPrivateLocale(dependencies, context.from);
+}
+
+/** Resolves a persisted private locale with Telegram's language as the first-run fallback. */
+async function getPrivateLocale(
+  dependencies: BotDependencies,
+  sender: Context['from'],
+): Promise<SupportedLocale> {
+  if (!sender) {
+    return localeFromTelegram(undefined);
+  }
+  return await dependencies.preferences.getLocale(dependencies.installationId, sender.id)
+    ?? localeFromTelegram(sender.language_code);
 }
 
 /** Creates a private selection identity from the authenticated private update. */

@@ -43,6 +43,13 @@
       "when": 1789828374177,
       "tag": "0005_naive_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789848016525,
+      "tag": "0006_superb_red_ghost",
+      "breakpoints": true
     }
   ]
 }

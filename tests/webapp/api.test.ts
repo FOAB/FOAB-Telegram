@@ -8,6 +8,7 @@ import type {
 import {
   createWebAppServer,
   type WebAppGroupStore,
+  type WebAppUserPreferencesStore,
 } from '../../src/webapp/api.js';
 import { WebAppSessionStore } from '../../src/webapp/session-store.js';
 
@@ -35,6 +36,7 @@ describe('Mini App settings API', () => {
       botToken: syntheticToken,
       clock: () => new Date(syntheticNow * 1_000),
       groups,
+      preferences: new SyntheticUserPreferencesStore(),
       installationId,
       sessions: new WebAppSessionStore(),
       telegram,
@@ -69,7 +71,7 @@ describe('Mini App settings API', () => {
 
     expect(identity.statusCode).toBe(200);
     expect(JSON.parse(identity.body) as unknown).toEqual({
-      user: { id: administratorId, languageCode: 'pt-BR' },
+      user: { id: administratorId, languageCode: 'pt-BR', privateLocale: 'pt-BR' },
       expiresAt: new Date((syntheticNow + 3_600) * 1_000).toISOString(),
     });
     expect(groups.statusCode).toBe(200);
@@ -94,6 +96,44 @@ describe('Mini App settings API', () => {
     expect(groups.body).not.toContain(installationId);
     expect(groups.headers['cache-control']).toBe('no-store');
     expect(groups.headers['content-security-policy']).toContain("frame-ancestors 'none'");
+  });
+
+  it('persists the private language preference with CSRF and origin checks', async () => {
+    const session = await createSession(app);
+    const update = await app.inject({
+      method: 'PATCH',
+      url: '/api/preferences',
+      headers: {
+        'content-type': 'application/json',
+        cookie: session.cookie,
+        origin: syntheticOrigin,
+        'x-foab-csrf': session.csrfToken,
+      },
+      payload: JSON.stringify({ locale: 'es-ES' }),
+    });
+    const identity = await app.inject({
+      method: 'GET',
+      url: '/api/session',
+      headers: { cookie: session.cookie },
+    });
+    const missingCsrf = await app.inject({
+      method: 'PATCH',
+      url: '/api/preferences',
+      headers: {
+        'content-type': 'application/json',
+        cookie: session.cookie,
+        origin: syntheticOrigin,
+      },
+      payload: JSON.stringify({ locale: 'en-US' }),
+    });
+
+    expect(update.statusCode).toBe(200);
+    expect(JSON.parse(update.body) as unknown).toEqual({ privateLocale: 'es-ES' });
+    expect(identity.statusCode).toBe(200);
+    expect(JSON.parse(identity.body) as unknown).toMatchObject({
+      user: { privateLocale: 'es-ES' },
+    });
+    expect(missingCsrf.statusCode).toBe(403);
   });
 
   it('rejects invalid Telegram init data and browser requests from another origin', async () => {
@@ -390,5 +430,18 @@ class SyntheticTelegramApi {
       return { status: 'administrator' } as ChatMember;
     }
     return { status: 'member' } as ChatMember;
+  }
+}
+
+class SyntheticUserPreferencesStore implements WebAppUserPreferencesStore {
+  private readonly locales = new Map<string, 'en-US' | 'pt-BR' | 'es-ES'>();
+
+  public async getLocale(scopedInstallationId: string, userId: number) {
+    return this.locales.get(`${scopedInstallationId}:${userId}`) ?? null;
+  }
+
+  public async setLocale(scopedInstallationId: string, userId: number, locale: 'en-US' | 'pt-BR' | 'es-ES') {
+    this.locales.set(`${scopedInstallationId}:${userId}`, locale);
+    return locale;
   }
 }

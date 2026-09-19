@@ -18,6 +18,7 @@ import type {
 import type { MessageDeliveryMode } from '../db/schema.js';
 import { isGroupAdministrator, type GroupMemberLookup } from '../telegram/authorization.js';
 import { parseSupportedLocale, isSupportedTimeZone } from '../telegram/commands.js';
+import { localeFromTelegram, type SupportedLocale } from '../i18n/messages.js';
 import { validateTelegramWebAppInitData } from './telegram-init-data.js';
 import { WebAppSessionStore, type WebAppSession } from './session-store.js';
 
@@ -46,12 +47,26 @@ export interface WebAppGroupStore {
   ) => Promise<GroupRecord | null>;
 }
 
+/** Database operations for private settings, always scoped by installation and Telegram user. */
+export interface WebAppUserPreferencesStore {
+  readonly getLocale: (
+    installationId: string,
+    telegramUserId: number,
+  ) => Promise<SupportedLocale | null>;
+  readonly setLocale: (
+    installationId: string,
+    telegramUserId: number,
+    locale: SupportedLocale,
+  ) => Promise<SupportedLocale>;
+}
+
 /** Dependencies owned by the running FOAB installation. */
 export interface WebAppServerDependencies {
   readonly botToken: string;
   readonly installationId: string;
   readonly webAppUrl: string;
   readonly groups: WebAppGroupStore;
+  readonly preferences: WebAppUserPreferencesStore;
   readonly telegram: GroupMemberLookup;
   readonly sessions?: WebAppSessionStore;
   readonly clock?: () => Date;
@@ -62,6 +77,7 @@ export interface WebAppSessionResponse {
   readonly user: {
     readonly id: number;
     readonly languageCode: string | null;
+    readonly privateLocale: SupportedLocale;
   };
   readonly csrfToken: string;
   readonly expiresAt: string;
@@ -137,10 +153,15 @@ export function createWebAppServer(
     }
 
     try {
-      const created = sessions.create({
+    const created = sessions.create({
         id: validated.user.id,
         languageCode: validated.user.languageCode,
       }, clock());
+      const privateLocale = await resolvePrivateLocale(
+        dependencies.preferences,
+        dependencies.installationId,
+        created.session,
+      );
       reply.setCookie(SESSION_COOKIE_NAME, created.sessionToken, {
         httpOnly: true,
         maxAge: 60 * 60,
@@ -155,7 +176,7 @@ export function createWebAppServer(
         sameSite: 'strict',
         secure: true,
       });
-      return reply.code(201).send(toSessionResponse(created.session, created.csrfToken));
+      return reply.code(201).send(toSessionResponse(created.session, created.csrfToken, privateLocale));
     } catch {
       return sendApiError(reply, 503, 'session_unavailable');
     }
@@ -169,7 +190,16 @@ export function createWebAppServer(
     if (!session) {
       return sendApiError(reply, 401, 'unauthorized');
     }
-    return reply.send(toSessionIdentity(session));
+    try {
+      const privateLocale = await resolvePrivateLocale(
+        dependencies.preferences,
+        dependencies.installationId,
+        session,
+      );
+      return reply.send(toSessionIdentity(session, privateLocale));
+    } catch {
+      return sendApiError(reply, 503, 'session_unavailable');
+    }
   });
 
   app.delete('/api/session', async (request, reply) => {
@@ -187,6 +217,37 @@ export function createWebAppServer(
     reply.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
     reply.clearCookie(CSRF_COOKIE_NAME, { path: '/' });
     return reply.code(204).send();
+  });
+
+  app.patch('/api/preferences', async (
+    request: FastifyRequest<{ Body: unknown }>,
+    reply,
+  ) => {
+    if (!isExactOrigin(request, origin) || !isJsonRequest(request)) {
+      return sendApiError(reply, 403, 'origin_denied');
+    }
+    const session = getSession(request, sessions, clock());
+    if (!session) {
+      return sendApiError(reply, 401, 'unauthorized');
+    }
+    if (!hasValidCsrf(request, sessions, session)) {
+      return sendApiError(reply, 403, 'csrf_denied');
+    }
+    const patch = parsePrivatePreferencesPatch(request.body);
+    if (!patch) {
+      return sendApiError(reply, 400, 'invalid_request');
+    }
+
+    try {
+      const privateLocale = await dependencies.preferences.setLocale(
+        dependencies.installationId,
+        session.user.id,
+        patch.locale,
+      );
+      return reply.send({ privateLocale });
+    } catch {
+      return sendApiError(reply, 503, 'session_unavailable');
+    }
   });
 
   app.get('/api/groups', async (request, reply) => {
@@ -275,11 +336,13 @@ function sendApiError(reply: FastifyReply, statusCode: number, code: string) {
 function toSessionResponse(
   session: WebAppSession,
   csrfToken: string,
+  privateLocale: SupportedLocale,
 ): WebAppSessionResponse {
   return {
     user: {
       id: session.user.id,
       languageCode: session.user.languageCode,
+      privateLocale,
     },
     csrfToken,
     expiresAt: session.expiresAt.toISOString(),
@@ -289,14 +352,26 @@ function toSessionResponse(
 /** Converts a session into a safe identity response without its CSRF secret. */
 function toSessionIdentity(
   session: WebAppSession,
+  privateLocale: SupportedLocale,
 ): Pick<WebAppSessionResponse, 'user' | 'expiresAt'> {
   return {
     user: {
       id: session.user.id,
       languageCode: session.user.languageCode,
+      privateLocale,
     },
     expiresAt: session.expiresAt.toISOString(),
   };
+}
+
+/** Resolves a persisted private locale and falls back to Telegram's language hint. */
+async function resolvePrivateLocale(
+  preferences: WebAppUserPreferencesStore,
+  installationId: string,
+  session: WebAppSession,
+): Promise<SupportedLocale> {
+  return await preferences.getLocale(installationId, session.user.id)
+    ?? localeFromTelegram(session.user.languageCode ?? undefined);
 }
 
 /** Converts only the fields needed by the settings UI. */
@@ -370,6 +445,20 @@ function parseSessionBody(value: unknown): { readonly initData: string } | null 
   const initData = value['initData'];
   return typeof initData === 'string' && initData.length > 0 && initData.length <= 8_192
     ? { initData }
+    : null;
+}
+
+/** Validates the exact private-preference patch accepted by the API. */
+function parsePrivatePreferencesPatch(value: unknown): { readonly locale: SupportedLocale } | null {
+  if (!isRecord(value) || !hasExactKeys(value, ['locale'])) {
+    return null;
+  }
+  const locale = value['locale'];
+  return typeof locale === 'string'
+    ? (() => {
+      const parsed = parseSupportedLocale(locale);
+      return parsed === null ? null : { locale: parsed };
+    })()
     : null;
 }
 

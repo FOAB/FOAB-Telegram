@@ -73,6 +73,10 @@ describe('settings interaction keyboards', () => {
       web_app: { url: 'https://miniapp.example.invalid/foab' },
     });
     expect(keyboard.inline_keyboard[1]?.[0]).toMatchObject({
+      text: messages.privateSettingsButton,
+      callback_data: 'foab:private:settings',
+    });
+    expect(keyboard.inline_keyboard[2]?.[0]).toMatchObject({
       text: '1. Synthetic Group',
       callback_data: 'foab:settings:group:1',
     });

@@ -6,6 +6,7 @@ export type MessageDeliveryMode = 'always' | 'first';
 export interface SessionUser {
   readonly id: number;
   readonly languageCode: string | null;
+  readonly privateLocale: UiLocale;
 }
 
 /** Browser-visible authenticated session state. */
@@ -127,6 +128,26 @@ export class WebAppApiClient {
     return updated;
   }
 
+  /** Saves the authenticated user's private-chat language preference. */
+  public async updatePrivateLocale(locale: UiLocale): Promise<UiLocale> {
+    const csrfToken = this.csrfToken ?? readCookie('foab_csrf');
+    if (!csrfToken) {
+      throw new WebAppApiError(401, 'unauthorized');
+    }
+    const result = await this.request('/api/preferences', {
+      body: JSON.stringify({ locale }),
+      headers: {
+        'content-type': 'application/json',
+        'x-foab-csrf': csrfToken,
+      },
+      method: 'PATCH',
+    });
+    if (!isRecord(result) || !isUiLocale(result['privateLocale'])) {
+      throw new WebAppApiError(502, 'invalid_response');
+    }
+    return result['privateLocale'];
+  }
+
   private async request(path: string, init: RequestInit): Promise<unknown> {
     let response: Response;
     try {
@@ -158,6 +179,7 @@ function parseSession(value: unknown): SessionState {
   const user = value['user'];
   const id = user['id'];
   const languageCode = user['languageCode'];
+  const privateLocale = user['privateLocale'];
   const csrfToken = value['csrfToken'];
   const expiresAt = value['expiresAt'];
   if (
@@ -165,6 +187,7 @@ function parseSession(value: unknown): SessionState {
     !Number.isSafeInteger(id) ||
     id <= 0 ||
     (languageCode !== null && typeof languageCode !== 'string') ||
+    !isUiLocale(privateLocale) ||
     (csrfToken !== undefined && !isOpaqueToken(csrfToken)) ||
     typeof expiresAt !== 'string'
   ) {
@@ -173,7 +196,7 @@ function parseSession(value: unknown): SessionState {
   return {
     ...(csrfToken === undefined ? {} : { csrfToken }),
     expiresAt,
-    user: { id, languageCode },
+    user: { id, languageCode, privateLocale },
   };
 }
 
@@ -249,7 +272,7 @@ function isNullableConfigurationText(value: unknown): value is string | null {
 }
 
 /** Narrows the API locale string to the shared UI union. */
-function isUiLocale(value: string): value is UiLocale {
+function isUiLocale(value: unknown): value is UiLocale {
   return value === 'en-US' || value === 'pt-BR' || value === 'es-ES';
 }
 

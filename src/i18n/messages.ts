@@ -18,6 +18,11 @@ export interface MessageCatalog {
   readonly settingsBackButton: string;
   readonly settingsCloseButton: string;
   readonly settingsWebAppButton: string;
+  readonly privateSettingsButton: string;
+  readonly privateSettingsTitle: string;
+  readonly privateLanguageButton: string;
+  readonly privateLanguagePrompt: string;
+  readonly privateSettingsUpdated: string;
   readonly settingsLanguagePrompt: string;
   readonly settingsTimeZonePrompt: string;
   readonly settingsFeatureStatus: (feature: 'welcome' | 'rules' | 'goodbye', enabled: boolean, mode: 'always' | 'first', deletePrevious: boolean) => string;
@@ -71,6 +76,11 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsBackButton: 'Back',
     settingsCloseButton: 'Close',
     settingsWebAppButton: 'Open settings app',
+    privateSettingsButton: 'Bot settings',
+    privateSettingsTitle: 'Private bot settings',
+    privateLanguageButton: 'Private language',
+    privateLanguagePrompt: 'Choose the language FOAB uses in your private chat:',
+    privateSettingsUpdated: 'Your private language was updated.',
     settingsLanguagePrompt: 'Choose the group language:',
     settingsTimeZonePrompt: 'Choose a common time zone. Use the command form for another supported IANA zone.',
     settingsFeatureStatus: (feature, enabled, mode, deletePrevious) => `${settingsFeatureNameEn(feature)}\n\nStatus: ${enabled ? 'Enabled' : 'Disabled'}${feature === 'rules' ? '' : `\nMode: ${mode === 'always' ? 'Always send' : 'Send first entry'}\nDelete previous message: ${deletePrevious ? 'Enabled' : 'Disabled'}`}`,
@@ -126,6 +136,11 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsBackButton: 'Voltar',
     settingsCloseButton: 'Fechar',
     settingsWebAppButton: 'Abrir app de configurações',
+    privateSettingsButton: 'Configurações do bot',
+    privateSettingsTitle: 'Configurações privadas do bot',
+    privateLanguageButton: 'Idioma privado',
+    privateLanguagePrompt: 'Escolha o idioma que o FOAB usará na sua conversa privada:',
+    privateSettingsUpdated: 'Seu idioma privado foi atualizado.',
     settingsLanguagePrompt: 'Escolha o idioma do grupo:',
     settingsTimeZonePrompt: 'Escolha um fuso horário comum. Use o comando para outro fuso IANA compatível.',
     settingsFeatureStatus: (feature, enabled, mode, deletePrevious) => `${settingsFeatureNamePt(feature)}\n\nStatus: ${enabled ? 'Ativado' : 'Desativado'}${feature === 'rules' ? '' : `\nModo: ${mode === 'always' ? 'Sempre enviar' : 'Enviar 1ª entrada'}\nDeletar a última mensagem: ${deletePrevious ? 'Ativado' : 'Desativado'}`}`,
@@ -181,6 +196,11 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsBackButton: 'Volver',
     settingsCloseButton: 'Cerrar',
     settingsWebAppButton: 'Abrir app de ajustes',
+    privateSettingsButton: 'Ajustes del bot',
+    privateSettingsTitle: 'Ajustes privados del bot',
+    privateLanguageButton: 'Idioma privado',
+    privateLanguagePrompt: 'Elige el idioma que FOAB usará en tu chat privado:',
+    privateSettingsUpdated: 'Tu idioma privado fue actualizado.',
     settingsLanguagePrompt: 'Elige el idioma del grupo:',
     settingsTimeZonePrompt: 'Elige una zona horaria común. Usa el comando para otra zona IANA compatible.',
     settingsFeatureStatus: (feature, enabled, mode, deletePrevious) => `${settingsFeatureNameEs(feature)}\n\nEstado: ${enabled ? 'Activado' : 'Desactivado'}${feature === 'rules' ? '' : `\nModo: ${mode === 'always' ? 'Enviar siempre' : 'Enviar primera entrada'}\nEliminar el último mensaje: ${deletePrevious ? 'Activado' : 'Desactivado'}`}`,

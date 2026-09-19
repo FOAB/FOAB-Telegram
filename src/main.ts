@@ -8,6 +8,7 @@ import { createDatabase } from './db/database.js';
 import { ensureCurrentInstallation } from './db/installation-repository.js';
 import { GroupRepository } from './db/group-repository.js';
 import { UpdateInboxRepository } from './db/update-inbox-repository.js';
+import { UserPreferencesRepository } from './db/user-preferences-repository.js';
 import { createWebAppServer } from './webapp/api.js';
 import {
   groupAdministratorCommandMenu,
@@ -97,9 +98,11 @@ async function main(): Promise<void> {
       phase: 'installation_initialization',
     });
     const groups = new GroupRepository(database.db);
+    const preferences = new UserPreferencesRepository(database.db);
     const bot = createBot(config.telegramBotToken, {
       installationId,
       groups,
+      preferences,
       inbox: new UpdateInboxRepository(database.db),
       ...(config.webAppUrl === null ? {} : { webAppUrl: config.webAppUrl }),
       logger: {
@@ -161,6 +164,7 @@ async function main(): Promise<void> {
       : createWebAppServer({
         botToken: config.telegramBotToken,
         groups,
+        preferences,
         installationId,
         telegram: bot.api,
         webAppUrl: config.webAppUrl,

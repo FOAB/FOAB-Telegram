@@ -46,6 +46,19 @@ describe('settings command contract', () => {
   });
 
   it('accepts only closed settings callback actions', () => {
+    expect(parseSettingsCallbackData('foab:private:settings')).toEqual({
+      kind: 'show-private-settings',
+    });
+    expect(parseSettingsCallbackData('foab:private:language')).toEqual({
+      kind: 'show-private-language',
+    });
+    expect(parseSettingsCallbackData('foab:private:locale:pt-BR')).toEqual({
+      kind: 'set-private-locale',
+      value: 'pt-BR',
+    });
+    expect(parseSettingsCallbackData('foab:private:back')).toEqual({
+      kind: 'private-settings-back',
+    });
     expect(parseSettingsCallbackData('foab:settings:group:2')).toEqual({
       kind: 'select-group',
       index: 2,
@@ -84,6 +97,8 @@ describe('settings command contract', () => {
       feature: 'welcome',
     });
     expect(parseSettingsCallbackData('foab:settings:locale:fr-FR')).toBeNull();
+    expect(parseSettingsCallbackData('foab:private:locale:fr-FR')).toBeNull();
+    expect(parseSettingsCallbackData('foab:private:locale:pt-BR:extra')).toBeNull();
     expect(parseSettingsCallbackData('foab:settings:group:0')).toBeNull();
     expect(parseSettingsCallbackData('other:settings:language')).toBeNull();
     expect(parseSettingsCallbackData('foab:settings:feature:unknown')).toBeNull();

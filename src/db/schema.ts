@@ -13,6 +13,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { SupportedLocale } from '../i18n/messages.js';
 
 /** Telegram group chat kinds supported by the current bot integration. */
 export type GroupChatType = 'group' | 'supergroup';
@@ -108,6 +109,31 @@ export const telegramGroups = pgTable(
       table.isActive,
       table.updatedAt,
     ),
+  ],
+);
+
+/** Per-user private FOAB preferences, scoped to one self-hosted installation. */
+export const telegramUserPreferences = pgTable(
+  'telegram_user_preferences',
+  {
+    installationId: uuid('installation_id')
+      .notNull()
+      .references(() => installations.id, { onDelete: 'cascade' }),
+    telegramUserId: bigint('telegram_user_id', { mode: 'bigint' }).notNull(),
+    privateLocale: varchar('private_locale', { length: 16 }).$type<SupportedLocale>().default('en-US').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'telegram_user_preferences_installation_user_pk',
+      columns: [table.installationId, table.telegramUserId],
+    }),
+    check(
+      'telegram_user_preferences_locale_check',
+      sql`${table.privateLocale} IN ('en-US', 'pt-BR', 'es-ES')`,
+    ),
+    index('telegram_user_preferences_installation_idx').on(table.installationId),
   ],
 );
 

@@ -43,6 +43,7 @@ function App(): ReactElement {
   const [session, setSession] = useState<SessionState | null>(null);
   const [groups, setGroups] = useState<readonly GroupSettings[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [privateSettingsOpen, setPrivateSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('home');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ function App(): ReactElement {
       const currentGroups = await api.listGroups();
       setSession(currentSession);
       setGroups(currentGroups);
+      setPrivateSettingsOpen(false);
       setSelectedChatId((current) => current && currentGroups.some((group) => group.chatId === current)
         ? current
         : null);
@@ -90,22 +92,26 @@ function App(): ReactElement {
       return;
     }
     const handleBack = () => {
+      if (privateSettingsOpen) {
+        setPrivateSettingsOpen(false);
+        return;
+      }
       if (settingsSection !== 'home') {
         setSettingsSection('home');
       } else {
         setSelectedChatId(null);
       }
     };
-    if (selectedChatId) {
+    if (selectedChatId || privateSettingsOpen) {
       backButton.show();
       backButton.onClick(handleBack);
     } else {
       backButton.hide();
     }
     return () => backButton.offClick(handleBack);
-  }, [selectedChatId, settingsSection, webApp]);
+  }, [privateSettingsOpen, selectedChatId, settingsSection, webApp]);
 
-  const locale = localeFromLanguageCode(session?.user.languageCode ?? null);
+  const locale = session?.user.privateLocale ?? localeFromLanguageCode(session?.user.languageCode ?? null);
   const messages = getUiMessages(locale);
   const selectedGroup = groups.find((group) => group.chatId === selectedChatId) ?? null;
 
@@ -123,6 +129,23 @@ function App(): ReactElement {
       </PageShell>
     );
   }
+  if (privateSettingsOpen) {
+    return (
+      <PageShell messages={messages} webApp={webApp}>
+        <BotSettingsView
+          api={api}
+          locale={session.user.privateLocale}
+          messages={messages}
+          onBack={() => setPrivateSettingsOpen(false)}
+          onSaved={(privateLocale) => {
+            setSession((current) => current
+              ? { ...current, user: { ...current.user, privateLocale } }
+              : current);
+          }}
+        />
+      </PageShell>
+    );
+  }
   if (selectedGroup) {
     return (
       <PageShell messages={messages} webApp={webApp}>
@@ -132,6 +155,7 @@ function App(): ReactElement {
           messages={messages}
           section={settingsSection}
           onBack={() => {
+            setPrivateSettingsOpen(false);
             setSelectedChatId(null);
             setSettingsSection('home');
           }}
@@ -153,6 +177,7 @@ function App(): ReactElement {
           setSettingsSection('home');
         }}
         onReload={() => void load()}
+        onOpenBotSettings={() => setPrivateSettingsOpen(true)}
       />
     </PageShell>
   );
@@ -220,11 +245,13 @@ function GroupsView({
   groups,
   messages,
   onReload,
+  onOpenBotSettings,
   onSelect,
 }: {
   readonly groups: readonly GroupSettings[];
   readonly messages: ReturnType<typeof getUiMessages>;
   readonly onReload: () => void;
+  readonly onOpenBotSettings: () => void;
   readonly onSelect: (chatId: string) => void;
 }): ReactElement {
   const [searchQuery, setSearchQuery] = useState('');
@@ -296,6 +323,97 @@ function GroupsView({
           ))}
         </div>
       )}
+      <div className="settings-list-group bot-settings-group">
+        <div className="list-section-heading">
+          <h3>{messages.botSettingsTitle}</h3>
+        </div>
+        <nav className="settings-list" aria-label={messages.botSettingsTitle}>
+          <SettingsListRow
+            icon={<IconSettings aria-hidden="true" size={22} stroke={1.7} />}
+            title={messages.botSettingsButton}
+            summary={messages.botSettingsDescription}
+            onClick={onOpenBotSettings}
+          />
+        </nav>
+      </div>
+    </section>
+  );
+}
+
+/** Edits private-chat preferences for the authenticated Telegram user. */
+function BotSettingsView({
+  api,
+  locale,
+  messages,
+  onBack,
+  onSaved,
+}: {
+  readonly api: WebAppApiClient;
+  readonly locale: UiLocale;
+  readonly messages: ReturnType<typeof getUiMessages>;
+  readonly onBack: () => void;
+  readonly onSaved: (locale: UiLocale) => void;
+}): ReactElement {
+  const [selectedLocale, setSelectedLocale] = useState<UiLocale>(locale);
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedLocale(locale);
+  }, [locale]);
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const updatedLocale = selectedLocale === locale
+        ? locale
+        : await api.updatePrivateLocale(selectedLocale);
+      onSaved(updatedLocale);
+      setFeedback(messages.saved);
+    } catch (saveError: unknown) {
+      setFeedback(errorMessage(saveError, null, locale, messages));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="content-section" aria-labelledby="bot-settings-title">
+      <button className="text-button back-button" type="button" onClick={onBack}>
+        <IconArrowLeft aria-hidden="true" size={18} stroke={2} />
+        {messages.back}
+      </button>
+      <div className="settings-heading">
+        <div className="group-icon large" aria-hidden="true">
+          <IconSettings size={24} stroke={1.8} />
+        </div>
+        <div>
+          <h2 id="bot-settings-title">{messages.botSettingsTitle}</h2>
+          <p>{messages.botSettingsDescription}</p>
+        </div>
+      </div>
+      <div className="settings-list-group">
+        <div className="list-section-heading">
+          <h3>{messages.privateSettingsSectionTitle}</h3>
+        </div>
+        <form className="settings-form" onSubmit={save}>
+          <label>
+            <span>{messages.privateLanguageLabel}</span>
+            <select value={selectedLocale} onChange={(event) => setSelectedLocale(event.target.value as UiLocale)}>
+              {(Object.keys(messages.localeNames) as UiLocale[]).map((option) => (
+                <option key={option} value={option}>{messages.localeNames[option]}</option>
+              ))}
+            </select>
+          </label>
+          <p className="field-help">{messages.privateLanguageHelp}</p>
+          {feedback && <p className="form-feedback" role="status">{feedback}</p>}
+          <button className="primary-button" type="submit" disabled={saving}>
+            {saving ? messages.saving : messages.save}
+          </button>
+        </form>
+      </div>
     </section>
   );
 }

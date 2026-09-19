@@ -143,6 +143,10 @@ export type MessageDeliveryMode = 'always' | 'first';
 /** Closed callback actions emitted by FOAB's settings keyboards. */
 export type SettingsCallback =
   | { readonly kind: 'select-group'; readonly index: number }
+  | { readonly kind: 'show-private-settings' }
+  | { readonly kind: 'show-private-language' }
+  | { readonly kind: 'set-private-locale'; readonly value: SupportedLocale }
+  | { readonly kind: 'private-settings-back' }
   | { readonly kind: 'show-language' }
   | { readonly kind: 'show-time-zone' }
   | { readonly kind: 'show-feature'; readonly feature: SettingsFeature }
@@ -161,6 +165,14 @@ export function settingsCallbackData(action: SettingsCallback): string {
   switch (action.kind) {
     case 'select-group':
       return `foab:settings:group:${action.index}`;
+    case 'show-private-settings':
+      return 'foab:private:settings';
+    case 'show-private-language':
+      return 'foab:private:language';
+    case 'set-private-locale':
+      return `foab:private:locale:${action.value}`;
+    case 'private-settings-back':
+      return 'foab:private:back';
     case 'show-language':
       return 'foab:settings:language';
     case 'show-time-zone':
@@ -190,6 +202,20 @@ export function settingsCallbackData(action: SettingsCallback): string {
 
 /** Parses only callback payloads created by the settings keyboard builder. */
 export function parseSettingsCallbackData(input: string): SettingsCallback | null {
+  if (input === 'foab:private:settings') {
+    return { kind: 'show-private-settings' };
+  }
+  if (input === 'foab:private:language') {
+    return { kind: 'show-private-language' };
+  }
+  if (input === 'foab:private:back') {
+    return { kind: 'private-settings-back' };
+  }
+  const privateLocaleParts = input.split(':');
+  if (privateLocaleParts.length === 4 && privateLocaleParts[0] === 'foab' && privateLocaleParts[1] === 'private' && privateLocaleParts[2] === 'locale') {
+    const locale = parseSupportedLocale(privateLocaleParts[3] ?? '');
+    return locale ? { kind: 'set-private-locale', value: locale } : null;
+  }
   if (input === 'foab:settings:language') {
     return { kind: 'show-language' };
   }

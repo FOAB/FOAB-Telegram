@@ -107,11 +107,33 @@ export function privateGroupSelectionKeyboard(
       { kind: 'select-group', index: group.index },
     ),
   ]);
+  rows.unshift([callbackButton(messages.privateSettingsButton, { kind: 'show-private-settings' })]);
   if (webAppUrl !== undefined) {
     rows.unshift([{ text: messages.settingsWebAppButton, web_app: { url: webAppUrl } }]);
   }
   return {
     inline_keyboard: rows,
+  };
+}
+
+/** Builds the private FOAB settings menu, separate from any group settings. */
+export function privateSettingsKeyboard(messages: MessageCatalog): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [callbackButton(messages.privateLanguageButton, { kind: 'show-private-language' })],
+      [callbackButton(messages.settingsBackButton, { kind: 'private-settings-back' })],
+    ],
+  };
+}
+
+/** Builds the private language picker without accepting client-supplied locale values. */
+export function privateLanguageKeyboard(messages: MessageCatalog): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      SETTINGS_LOCALES.map((locale) =>
+        callbackButton(messages.localeName(locale), { kind: 'set-private-locale', value: locale })),
+      [callbackButton(messages.settingsBackButton, { kind: 'show-private-settings' })],
+    ],
   };
 }
 
