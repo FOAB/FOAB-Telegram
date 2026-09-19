@@ -17,7 +17,7 @@
 
 ## Comparison
 
-The source shows the previous single long form. The implementation now has a group list and group settings menu built from the BotFather-style grouped-list pattern. Groups, General, Messages, Rules, Welcome, and Goodbye use one full-row interaction with a leading avatar or line icon, supporting text, optional status chip, and trailing chevron. Each row continues to open the existing focused settings or editor view. The local browser confirmed the shell renders and the error state is readable, but it could not provide a same-state authenticated capture for the new category menu.
+The source shows the previous single long form. The implementation now has a group list and group settings menu built from the BotFather-style grouped-list pattern. Groups, General, Welcome, Rules, and Goodbye use one full-row interaction with a leading avatar or line icon, supporting text, optional status chip, and trailing chevron. Each row opens its own focused settings or editor view, without an intermediate Messages category. The local browser confirmed the shell renders and the error state is readable, but it could not provide a same-state authenticated capture for the new category menu.
 
 The following surfaces were checked against the existing Telegram-like tokens and the attached reference:
 

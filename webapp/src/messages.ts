@@ -13,16 +13,11 @@ export interface UiMessages {
   readonly groupsSubtitle: string;
   readonly noGroups: string;
   readonly groupType: (type: 'group' | 'supergroup') => string;
-  readonly configure: string;
   readonly settingsTitle: string;
   readonly settingsHomeSubtitle: string;
   readonly settingsListTitle: string;
   readonly generalTitle: string;
   readonly generalHelp: string;
-  readonly messagesTitle: string;
-  readonly messagesHelp: string;
-  readonly messagesHomeSubtitle: string;
-  readonly messageFeaturesListTitle: string;
   readonly rulesTitle: string;
   readonly rulesCategoryHelp: string;
   readonly language: string;
@@ -42,8 +37,6 @@ export interface UiMessages {
   readonly saved: string;
   readonly back: string;
   readonly backToSettings: string;
-  readonly backToMessages: string;
-  readonly open: string;
   readonly status: string;
   readonly enabled: string;
   readonly disabled: string;
@@ -75,16 +68,11 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupsSubtitle: 'Choose a group to manage its shared settings.',
     noGroups: 'No active group was found where your administrator access could be confirmed.',
     groupType: (type) => type === 'supergroup' ? 'Supergroup' : 'Group',
-    configure: 'Configure',
     settingsTitle: 'Group settings',
     settingsHomeSubtitle: 'Choose a category to manage this group.',
     settingsListTitle: 'Settings',
     generalTitle: 'General',
     generalHelp: 'Language and time zone',
-    messagesTitle: 'Messages',
-    messagesHelp: 'Welcome and goodbye messages',
-    messagesHomeSubtitle: 'Choose a message feature to view its status and actions.',
-    messageFeaturesListTitle: 'Message features',
     rulesTitle: 'Rules',
     rulesCategoryHelp: 'Publish the rules members can read',
     language: 'Language',
@@ -104,8 +92,6 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     saved: 'Changes saved.',
     back: 'Back to groups',
     backToSettings: 'Back to settings',
-    backToMessages: 'Back to messages',
-    open: 'Open',
     status: 'Status',
     enabled: 'Enabled',
     disabled: 'Disabled',
@@ -135,16 +121,11 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupsSubtitle: 'Escolha um grupo para gerenciar suas configurações compartilhadas.',
     noGroups: 'Não foi encontrado um grupo ativo onde seu acesso de administrador pudesse ser confirmado.',
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
-    configure: 'Configurar',
     settingsTitle: 'Configurações do grupo',
     settingsHomeSubtitle: 'Escolha uma categoria para gerenciar este grupo.',
     settingsListTitle: 'Configurações',
     generalTitle: 'Geral',
     generalHelp: 'Idioma e fuso horário',
-    messagesTitle: 'Mensagens',
-    messagesHelp: 'Mensagens de boas-vindas e despedida',
-    messagesHomeSubtitle: 'Escolha um recurso para ver o status e as ações disponíveis.',
-    messageFeaturesListTitle: 'Recursos de mensagens',
     rulesTitle: 'Regras',
     rulesCategoryHelp: 'Publique as regras que os membros podem consultar',
     language: 'Idioma',
@@ -164,8 +145,6 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     saved: 'Alterações salvas.',
     back: 'Voltar aos grupos',
     backToSettings: 'Voltar às configurações',
-    backToMessages: 'Voltar às mensagens',
-    open: 'Abrir',
     status: 'Status',
     enabled: 'Ativado',
     disabled: 'Desativado',
@@ -195,16 +174,11 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     groupsSubtitle: 'Elige un grupo para administrar sus ajustes compartidos.',
     noGroups: 'No se encontró un grupo activo donde se pudiera confirmar tu acceso de administrador.',
     groupType: (type) => type === 'supergroup' ? 'Supergrupo' : 'Grupo',
-    configure: 'Configurar',
     settingsTitle: 'Ajustes del grupo',
     settingsHomeSubtitle: 'Elige una categoría para administrar este grupo.',
     settingsListTitle: 'Ajustes',
     generalTitle: 'General',
     generalHelp: 'Idioma y zona horaria',
-    messagesTitle: 'Mensajes',
-    messagesHelp: 'Mensajes de bienvenida y despedida',
-    messagesHomeSubtitle: 'Elige un recurso para ver su estado y sus acciones disponibles.',
-    messageFeaturesListTitle: 'Funciones de mensajes',
     rulesTitle: 'Reglas',
     rulesCategoryHelp: 'Publica las reglas que pueden consultar los miembros',
     language: 'Idioma',
@@ -224,8 +198,6 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     saved: 'Cambios guardados.',
     back: 'Volver a los grupos',
     backToSettings: 'Volver a los ajustes',
-    backToMessages: 'Volver a los mensajes',
-    open: 'Abrir',
     status: 'Estado',
     enabled: 'Activado',
     disabled: 'Desactivado',

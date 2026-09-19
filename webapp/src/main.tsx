@@ -29,7 +29,7 @@ import { initializeTelegramWebApp, type TelegramWebAppBridge } from './telegram-
 import './styles.css';
 
 const TIME_ZONE_OPTIONS = ['UTC', 'America/Sao_Paulo', 'America/New_York', 'Europe/Lisbon'] as const;
-type SettingsSection = 'home' | 'general' | 'messages' | 'welcome' | 'goodbye' | 'rules';
+type SettingsSection = 'home' | 'general' | 'welcome' | 'goodbye' | 'rules';
 
 /** Root application for the private FOAB administration Mini App. */
 function App(): ReactElement {
@@ -85,9 +85,7 @@ function App(): ReactElement {
       return;
     }
     const handleBack = () => {
-      if (settingsSection === 'welcome' || settingsSection === 'goodbye') {
-        setSettingsSection('messages');
-      } else if (settingsSection !== 'home') {
+      if (settingsSection !== 'home') {
         setSettingsSection('home');
       } else {
         setSelectedChatId(null);
@@ -336,17 +334,6 @@ function SettingsView({
     );
   }
 
-  if (section === 'messages') {
-    return (
-      <MessagesHomeView
-        group={group}
-        messages={messages}
-        onBack={() => onSectionChange('home')}
-        onOpen={onSectionChange}
-      />
-    );
-  }
-
   if (section === 'welcome' || section === 'goodbye') {
     const isWelcome = section === 'welcome';
     return (
@@ -356,7 +343,7 @@ function SettingsView({
         messages={messages}
         message={isWelcome ? welcomeMessage : goodbyeMessage}
         onMessageChange={isWelcome ? setWelcomeMessage : setGoodbyeMessage}
-        onBack={() => onSectionChange('messages')}
+        onBack={() => onSectionChange('home')}
         onSave={saveChanges}
         saving={saving}
         feedback={feedback}
@@ -451,60 +438,10 @@ function SettingsHomeView({
       </div>
       <nav className="settings-list" aria-label={messages.settingsTitle}>
         <SettingsListRow icon={<IconSettings aria-hidden="true" size={24} stroke={1.7} />} title={messages.generalTitle} summary={messages.generalHelp} onClick={() => onOpen('general')} />
-        <SettingsListRow icon={<IconMessage aria-hidden="true" size={24} stroke={1.7} />} title={messages.messagesTitle} summary={messages.messagesHelp} onClick={() => onOpen('messages')} />
+        <SettingsListRow icon={<IconMessage aria-hidden="true" size={24} stroke={1.7} />} title={messages.welcomeMessage} summary={messages.welcomeDescription} meta={<StatusChip configured={optionalText(group.welcomeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('welcome')} />
         <SettingsListRow icon={<IconListCheck aria-hidden="true" size={24} stroke={1.7} />} title={messages.rulesTitle} summary={messages.rulesCategoryHelp} onClick={() => onOpen('rules')} />
+        <SettingsListRow icon={<IconMessage aria-hidden="true" size={24} stroke={1.7} />} title={messages.goodbyeMessage} summary={messages.goodbyeDescription} meta={<StatusChip configured={optionalText(group.goodbyeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('goodbye')} />
       </nav>
-    </section>
-  );
-}
-
-/** Lists message features before opening the focused editor for one feature. */
-function MessagesHomeView({
-  group,
-  messages,
-  onBack,
-  onOpen,
-}: {
-  readonly group: GroupSettings;
-  readonly messages: ReturnType<typeof getUiMessages>;
-  readonly onBack: () => void;
-  readonly onOpen: (section: SettingsSection) => void;
-}): ReactElement {
-  return (
-    <section className="content-section" aria-labelledby="messages-home-title">
-      <button className="text-button back-button" type="button" onClick={onBack}>
-        <IconArrowLeft aria-hidden="true" size={18} stroke={2} />
-        {messages.backToSettings}
-      </button>
-      <div className="settings-heading">
-        <div className="group-icon large" aria-hidden="true">
-          <IconMessage size={24} stroke={1.8} />
-        </div>
-        <div>
-          <h2 id="messages-home-title">{messages.messagesTitle}</h2>
-          <p>{group.title}</p>
-        </div>
-      </div>
-      <p className="settings-home-subtitle">{messages.messagesHomeSubtitle}</p>
-      <div className="list-section-heading">
-        <h3>{messages.messageFeaturesListTitle}</h3>
-      </div>
-      <div className="settings-list">
-        <SettingsListRow
-          icon={<IconMessage aria-hidden="true" size={22} stroke={1.8} />}
-          title={messages.welcomeMessage}
-          summary={messages.welcomeDescription}
-          meta={<StatusChip configured={optionalText(group.welcomeMessage ?? '') !== null} messages={messages} />}
-          onClick={() => onOpen('welcome')}
-        />
-        <SettingsListRow
-          icon={<IconMessage aria-hidden="true" size={22} stroke={1.8} />}
-          title={messages.goodbyeMessage}
-          summary={messages.goodbyeDescription}
-          meta={<StatusChip configured={optionalText(group.goodbyeMessage ?? '') !== null} messages={messages} />}
-          onClick={() => onOpen('goodbye')}
-        />
-      </div>
     </section>
   );
 }
@@ -584,7 +521,7 @@ function MessageFeatureView({
     <section className="content-section" aria-labelledby="message-feature-title">
       <button className="text-button back-button" type="button" onClick={onBack}>
         <IconArrowLeft aria-hidden="true" size={18} stroke={2} />
-        {messages.backToMessages}
+        {messages.backToSettings}
       </button>
       <div className="settings-heading">
         <div className="group-icon large" aria-hidden="true">
