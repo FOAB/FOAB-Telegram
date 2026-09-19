@@ -29,7 +29,7 @@ import { initializeTelegramWebApp, type TelegramWebAppBridge } from './telegram-
 import './styles.css';
 
 const TIME_ZONE_OPTIONS = ['UTC', 'America/Sao_Paulo', 'America/New_York', 'Europe/Lisbon'] as const;
-type SettingsSection = 'home' | 'general' | 'messages' | 'rules';
+type SettingsSection = 'home' | 'general' | 'messages' | 'welcome' | 'goodbye' | 'rules';
 
 /** Root application for the private FOAB administration Mini App. */
 function App(): ReactElement {
@@ -85,7 +85,9 @@ function App(): ReactElement {
       return;
     }
     const handleBack = () => {
-      if (settingsSection !== 'home') {
+      if (settingsSection === 'welcome' || settingsSection === 'goodbye') {
+        setSettingsSection('messages');
+      } else if (settingsSection !== 'home') {
         setSettingsSection('home');
       } else {
         setSelectedChatId(null);
@@ -287,19 +289,7 @@ function SettingsView({
     setRulesText(group.rulesText ?? '');
   }, [group]);
 
-  if (section === 'home') {
-    return (
-      <SettingsHomeView
-        group={group}
-        messages={messages}
-        onBack={onBack}
-        onOpen={onSectionChange}
-      />
-    );
-  }
-
-  const save = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const saveChanges = async (): Promise<void> => {
     setSaving(true);
     setFeedback(null);
     try {
@@ -326,6 +316,50 @@ function SettingsView({
       setSaving(false);
     }
   };
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await saveChanges();
+  };
+
+  if (section === 'home') {
+    return (
+      <SettingsHomeView
+        group={group}
+        messages={messages}
+        onBack={onBack}
+        onOpen={onSectionChange}
+      />
+    );
+  }
+
+  if (section === 'messages') {
+    return (
+      <MessagesHomeView
+        group={group}
+        messages={messages}
+        onBack={() => onSectionChange('home')}
+        onOpen={onSectionChange}
+      />
+    );
+  }
+
+  if (section === 'welcome' || section === 'goodbye') {
+    const isWelcome = section === 'welcome';
+    return (
+      <MessageFeatureView
+        kind={section}
+        group={group}
+        messages={messages}
+        message={isWelcome ? welcomeMessage : goodbyeMessage}
+        onMessageChange={isWelcome ? setWelcomeMessage : setGoodbyeMessage}
+        onBack={() => onSectionChange('messages')}
+        onSave={saveChanges}
+        saving={saving}
+        feedback={feedback}
+      />
+    );
+  }
 
   return (
     <section className="content-section" aria-labelledby="settings-title">
@@ -361,30 +395,6 @@ function SettingsView({
               </select>
             </label>
             <p className="field-help">{messages.timezoneHelp}</p>
-          </>
-        )}
-        {section === 'messages' && (
-          <>
-            <label>
-              <span>{messages.welcomeMessage}</span>
-              <textarea
-                maxLength={4096}
-                rows={4}
-                value={welcomeMessage}
-                onChange={(event) => setWelcomeMessage(event.target.value)}
-              />
-            </label>
-            <p className="field-help">{messages.welcomeHelp}</p>
-            <label>
-              <span>{messages.goodbyeMessage}</span>
-              <textarea
-                maxLength={4096}
-                rows={4}
-                value={goodbyeMessage}
-                onChange={(event) => setGoodbyeMessage(event.target.value)}
-              />
-            </label>
-            <p className="field-help">{messages.goodbyeHelp}</p>
           </>
         )}
         {section === 'rules' && (
@@ -442,6 +452,193 @@ function SettingsHomeView({
   );
 }
 
+/** Lists message features before opening the focused editor for one feature. */
+function MessagesHomeView({
+  group,
+  messages,
+  onBack,
+  onOpen,
+}: {
+  readonly group: GroupSettings;
+  readonly messages: ReturnType<typeof getUiMessages>;
+  readonly onBack: () => void;
+  readonly onOpen: (section: SettingsSection) => void;
+}): ReactElement {
+  return (
+    <section className="content-section" aria-labelledby="messages-home-title">
+      <button className="text-button back-button" type="button" onClick={onBack}>
+        <IconArrowLeft aria-hidden="true" size={18} stroke={2} />
+        {messages.backToSettings}
+      </button>
+      <div className="settings-heading">
+        <div className="group-icon large" aria-hidden="true">
+          <IconMessage size={24} stroke={1.8} />
+        </div>
+        <div>
+          <h2 id="messages-home-title">{messages.messagesTitle}</h2>
+          <p>{group.title}</p>
+        </div>
+      </div>
+      <p className="settings-home-subtitle">{messages.messagesHomeSubtitle}</p>
+      <div className="feature-list">
+        <FeatureCard
+          icon={<IconMessage aria-hidden="true" size={22} stroke={1.8} />}
+          title={messages.welcomeMessage}
+          description={messages.welcomeDescription}
+          configured={optionalText(group.welcomeMessage ?? '') !== null}
+          messages={messages}
+          onOpen={() => onOpen('welcome')}
+        />
+        <FeatureCard
+          icon={<IconMessage aria-hidden="true" size={22} stroke={1.8} />}
+          title={messages.goodbyeMessage}
+          description={messages.goodbyeDescription}
+          configured={optionalText(group.goodbyeMessage ?? '') !== null}
+          messages={messages}
+          onOpen={() => onOpen('goodbye')}
+        />
+      </div>
+    </section>
+  );
+}
+
+/** Shows a compact status card for one configurable message feature. */
+function FeatureCard({
+  icon,
+  title,
+  description,
+  configured,
+  messages,
+  onOpen,
+}: {
+  readonly icon: ReactElement;
+  readonly title: string;
+  readonly description: string;
+  readonly configured: boolean;
+  readonly messages: ReturnType<typeof getUiMessages>;
+  readonly onOpen: () => void;
+}): ReactElement {
+  return (
+    <article className="feature-card">
+      <div className="feature-card-heading">
+        <span className="settings-category-icon">{icon}</span>
+        <div>
+          <h3>{title}</h3>
+          <p>{description}</p>
+        </div>
+      </div>
+      <div className="feature-card-footer">
+        <span className={`status-chip ${configured ? 'status-chip-active' : 'status-chip-inactive'}`}>
+          {configured ? messages.enabled : messages.disabled}
+        </span>
+        <button className="secondary-button" type="button" onClick={onOpen}>{messages.open}</button>
+      </div>
+    </article>
+  );
+}
+
+/** Presents status and focused actions for one welcome or goodbye message. */
+function MessageFeatureView({
+  kind,
+  group,
+  messages,
+  message,
+  onMessageChange,
+  onBack,
+  onSave,
+  saving,
+  feedback,
+}: {
+  readonly kind: 'welcome' | 'goodbye';
+  readonly group: GroupSettings;
+  readonly messages: ReturnType<typeof getUiMessages>;
+  readonly message: string;
+  readonly onMessageChange: (value: string) => void;
+  readonly onBack: () => void;
+  readonly onSave: () => Promise<void>;
+  readonly saving: boolean;
+  readonly feedback: string | null;
+}): ReactElement {
+  const [editorOpen, setEditorOpen] = useState(false);
+  const isWelcome = kind === 'welcome';
+  const title = isWelcome ? messages.welcomeMessage : messages.goodbyeMessage;
+  const description = isWelcome ? messages.welcomeDescription : messages.goodbyeDescription;
+  const mode = isWelcome ? messages.welcomeMode : messages.goodbyeMode;
+  const configured = optionalText(message) !== null;
+
+  return (
+    <section className="content-section" aria-labelledby="message-feature-title">
+      <button className="text-button back-button" type="button" onClick={onBack}>
+        <IconArrowLeft aria-hidden="true" size={18} stroke={2} />
+        {messages.backToMessages}
+      </button>
+      <div className="settings-heading">
+        <div className="group-icon large" aria-hidden="true">
+          <IconMessage size={24} stroke={1.8} />
+        </div>
+        <div>
+          <h2 id="message-feature-title">{title}</h2>
+          <p>{group.title}</p>
+        </div>
+      </div>
+      <div className="feature-summary">
+        <p>{description}</p>
+        <div className="feature-detail-row">
+          <strong>{messages.status}</strong>
+          <span className={`status-chip ${configured ? 'status-chip-active' : 'status-chip-inactive'}`}>
+            {configured ? messages.enabled : messages.disabled}
+          </span>
+        </div>
+        <div className="feature-detail-row feature-mode-row">
+          <strong>{messages.mode}</strong>
+          <span>{mode}</span>
+        </div>
+      </div>
+      <div className="feature-actions">
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => {
+            onMessageChange('');
+            setEditorOpen(true);
+          }}
+        >
+          {configured ? messages.disable : messages.enable}
+        </button>
+        <button className="primary-button" type="button" onClick={() => setEditorOpen(true)}>
+          {messages.customizeMessage}
+        </button>
+      </div>
+      {editorOpen && (
+        <form
+          className="settings-form feature-editor"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void onSave();
+          }}
+        >
+          <label>
+            <span>{title}</span>
+            <textarea
+              maxLength={4096}
+              rows={5}
+              value={message}
+              onChange={(event) => onMessageChange(event.target.value)}
+            />
+          </label>
+          <p className="field-help">{isWelcome ? messages.welcomeHelp : messages.goodbyeHelp}</p>
+          <p className="field-help">{messages.messageEditorHelp}</p>
+          {feedback && <p className="form-feedback" role="status">{feedback}</p>}
+          <button className="primary-button" type="submit" disabled={saving}>
+            {saving ? messages.saving : messages.save}
+          </button>
+        </form>
+      )}
+      {!editorOpen && feedback && <p className="form-feedback" role="status">{feedback}</p>}
+    </section>
+  );
+}
+
 /** Renders one large, touch-friendly category action in the group menu. */
 function CategoryButton({
   icon,
@@ -471,12 +668,10 @@ function CategoryButton({
   );
 }
 
-function sectionTitle(section: Exclude<SettingsSection, 'home'>, messages: ReturnType<typeof getUiMessages>): string {
+function sectionTitle(section: 'general' | 'rules', messages: ReturnType<typeof getUiMessages>): string {
   switch (section) {
     case 'general':
       return messages.generalTitle;
-    case 'messages':
-      return messages.messagesTitle;
     case 'rules':
       return messages.rulesTitle;
   }

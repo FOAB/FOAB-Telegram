@@ -15,7 +15,7 @@
 
 ## Comparison
 
-The source shows the previous single long form. The implementation now has a group settings menu with separate General, Messages, and Rules category actions, plus focused editor states for each category. The local browser confirmed the shell renders and the error state is readable, but it could not provide a same-state authenticated capture for the new category menu.
+The source shows the previous single long form. The implementation now has a group settings menu with separate General, Messages, and Rules category actions. Messages opens a second menu with separate Welcome and Goodbye feature cards; each feature then opens a focused status and editor view. The local browser confirmed the shell renders and the error state is readable, but it could not provide a same-state authenticated capture for the new category menu.
 
 The following surfaces were checked against the existing Telegram-like tokens and the attached reference:
 
