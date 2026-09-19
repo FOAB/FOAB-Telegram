@@ -10,6 +10,9 @@ export interface MessageCatalog {
   readonly id: (chatId: string, userId: number) => string;
   readonly rules: (rulesText: string) => string;
   readonly rulesNotConfigured: string;
+  readonly settingsWelcomeButton: string;
+  readonly settingsRulesButton: string;
+  readonly settingsGoodbyeButton: string;
   readonly settingsLanguageButton: string;
   readonly settingsTimeZoneButton: string;
   readonly settingsBackButton: string;
@@ -17,6 +20,12 @@ export interface MessageCatalog {
   readonly settingsWebAppButton: string;
   readonly settingsLanguagePrompt: string;
   readonly settingsTimeZonePrompt: string;
+  readonly settingsFeatureStatus: (feature: 'welcome' | 'rules' | 'goodbye', enabled: boolean) => string;
+  readonly settingsFeatureEditButton: string;
+  readonly settingsFeatureDisableButton: string;
+  readonly settingsFeaturePrompt: (feature: 'welcome' | 'rules' | 'goodbye') => string;
+  readonly settingsFeatureUpdated: (feature: 'welcome' | 'rules' | 'goodbye', enabled: boolean) => string;
+  readonly settingsFeatureTooLong: string;
   readonly localeName: (locale: SupportedLocale) => string;
   readonly privateGroupButton: (index: number, title: string) => string;
   readonly administratorHelp: string;
@@ -50,6 +59,9 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     id: (chatId, userId) => `Chat ID: ${chatId}\nYour user ID: ${userId}`,
     rules: (rulesText) => `Group rules:\n\n${rulesText}`,
     rulesNotConfigured: 'No group rules have been configured.',
+    settingsWelcomeButton: '💬 Welcome',
+    settingsRulesButton: '📜 Rules',
+    settingsGoodbyeButton: '👋 Goodbye',
     settingsLanguageButton: 'Language',
     settingsTimeZoneButton: 'Time zone',
     settingsBackButton: 'Back',
@@ -57,6 +69,12 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsWebAppButton: 'Open settings app',
     settingsLanguagePrompt: 'Choose the group language:',
     settingsTimeZonePrompt: 'Choose a common time zone. Use the command form for another supported IANA zone.',
+    settingsFeatureStatus: (feature, enabled) => `${settingsFeatureNameEn(feature)}\n\nStatus: ${enabled ? 'Enabled' : 'Disabled'}`,
+    settingsFeatureEditButton: 'Edit',
+    settingsFeatureDisableButton: 'Disable',
+    settingsFeaturePrompt: (feature) => `Send the new ${settingsFeatureNameEn(feature).toLowerCase()} text. Send /cancel to stop.`,
+    settingsFeatureUpdated: (feature, enabled) => `${settingsFeatureNameEn(feature)} ${enabled ? 'enabled' : 'disabled'}.`,
+    settingsFeatureTooLong: 'This text is too long for Telegram or the selected feature. Shorten it and try again.',
     localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
     privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
@@ -92,6 +110,9 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     id: (chatId, userId) => `ID do chat: ${chatId}\nSeu ID de usuário: ${userId}`,
     rules: (rulesText) => `Regras do grupo:\n\n${rulesText}`,
     rulesNotConfigured: 'As regras do grupo ainda não foram configuradas.',
+    settingsWelcomeButton: '💬 Boas-vindas',
+    settingsRulesButton: '📜 Regras',
+    settingsGoodbyeButton: '👋 Adeus',
     settingsLanguageButton: 'Idioma',
     settingsTimeZoneButton: 'Fuso horário',
     settingsBackButton: 'Voltar',
@@ -99,6 +120,12 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsWebAppButton: 'Abrir app de configurações',
     settingsLanguagePrompt: 'Escolha o idioma do grupo:',
     settingsTimeZonePrompt: 'Escolha um fuso horário comum. Use o comando para outro fuso IANA compatível.',
+    settingsFeatureStatus: (feature, enabled) => `${settingsFeatureNamePt(feature)}\n\nStatus: ${enabled ? 'Ativado' : 'Desativado'}`,
+    settingsFeatureEditButton: 'Editar',
+    settingsFeatureDisableButton: 'Desativar',
+    settingsFeaturePrompt: (feature) => `Envie o novo texto de ${settingsFeatureNamePt(feature).toLowerCase()}. Envie /cancel para cancelar.`,
+    settingsFeatureUpdated: (feature, enabled) => `${settingsFeatureNamePt(feature)} ${enabled ? 'ativada' : 'desativada'}.`,
+    settingsFeatureTooLong: 'Esse texto é longo demais para o Telegram ou para o recurso selecionado. Reduza o texto e tente novamente.',
     localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
     privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
@@ -134,6 +161,9 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     id: (chatId, userId) => `ID del chat: ${chatId}\nTu ID de usuario: ${userId}`,
     rules: (rulesText) => `Reglas del grupo:\n\n${rulesText}`,
     rulesNotConfigured: 'Las reglas del grupo todavía no están configuradas.',
+    settingsWelcomeButton: '💬 Bienvenida',
+    settingsRulesButton: '📜 Reglas',
+    settingsGoodbyeButton: '👋 Despedida',
     settingsLanguageButton: 'Idioma',
     settingsTimeZoneButton: 'Zona horaria',
     settingsBackButton: 'Volver',
@@ -141,6 +171,12 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     settingsWebAppButton: 'Abrir app de ajustes',
     settingsLanguagePrompt: 'Elige el idioma del grupo:',
     settingsTimeZonePrompt: 'Elige una zona horaria común. Usa el comando para otra zona IANA compatible.',
+    settingsFeatureStatus: (feature, enabled) => `${settingsFeatureNameEs(feature)}\n\nEstado: ${enabled ? 'Activado' : 'Desactivado'}`,
+    settingsFeatureEditButton: 'Editar',
+    settingsFeatureDisableButton: 'Desactivar',
+    settingsFeaturePrompt: (feature) => `Envía el nuevo texto de ${settingsFeatureNameEs(feature).toLowerCase()}. Envía /cancel para cancelar.`,
+    settingsFeatureUpdated: (feature, enabled) => `${settingsFeatureNameEs(feature)} ${enabled ? 'activada' : 'desactivada'}.`,
+    settingsFeatureTooLong: 'Este texto es demasiado largo para Telegram o para la función seleccionada. Acórtalo y vuelve a intentarlo.',
     localeName: (locale) => ({ 'en-US': 'English', 'pt-BR': 'Português', 'es-ES': 'Español' })[locale],
     privateGroupButton: (index, title) => `${index}. ${title}`,
     administratorHelp:
@@ -166,6 +202,42 @@ const catalogs: Readonly<Record<SupportedLocale, MessageCatalog>> = {
     cancelCompleted: 'Tu flujo activo de FOAB fue cancelado.',
   },
 };
+
+/** Returns the localized feature label used by the inline fallback flow. */
+function settingsFeatureNameEn(feature: 'welcome' | 'rules' | 'goodbye'): string {
+  switch (feature) {
+    case 'welcome':
+      return 'Welcome message';
+    case 'rules':
+      return 'Rules';
+    case 'goodbye':
+      return 'Goodbye message';
+  }
+}
+
+/** Returns the localized feature label used by the inline fallback flow. */
+function settingsFeatureNamePt(feature: 'welcome' | 'rules' | 'goodbye'): string {
+  switch (feature) {
+    case 'welcome':
+      return 'Mensagem de boas-vindas';
+    case 'rules':
+      return 'Regras';
+    case 'goodbye':
+      return 'Mensagem de despedida';
+  }
+}
+
+/** Returns the localized feature label used by the inline fallback flow. */
+function settingsFeatureNameEs(feature: 'welcome' | 'rules' | 'goodbye'): string {
+  switch (feature) {
+    case 'welcome':
+      return 'Mensaje de bienvenida';
+    case 'rules':
+      return 'Reglas';
+    case 'goodbye':
+      return 'Mensaje de despedida';
+  }
+}
 
 /** Returns the requested initial message catalog. */
 export function getMessages(locale: SupportedLocale): MessageCatalog {

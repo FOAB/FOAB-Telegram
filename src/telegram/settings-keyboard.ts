@@ -1,6 +1,10 @@
 import type { InlineKeyboardMarkup } from 'grammy/types';
 import type { MessageCatalog, SupportedLocale } from '../i18n/messages.js';
-import { settingsCallbackData, type SettingsCallback } from './commands.js';
+import {
+  settingsCallbackData,
+  type SettingsCallback,
+  type SettingsFeature,
+} from './commands.js';
 
 /** Locales exposed by the initial settings experience, in stable menu order. */
 const SETTINGS_LOCALES: readonly SupportedLocale[] = ['en-US', 'pt-BR', 'es-ES'];
@@ -19,7 +23,14 @@ export function settingsOverviewKeyboard(
   webAppUrl?: string,
 ): InlineKeyboardMarkup {
   const rows: InlineKeyboardMarkup['inline_keyboard'] = [
-    [callbackButton(messages.settingsLanguageButton, { kind: 'show-language' })],
+    [
+      callbackButton(messages.settingsWelcomeButton, { kind: 'show-feature', feature: 'welcome' }),
+      callbackButton(messages.settingsRulesButton, { kind: 'show-feature', feature: 'rules' }),
+    ],
+    [
+      callbackButton(messages.settingsGoodbyeButton, { kind: 'show-feature', feature: 'goodbye' }),
+      callbackButton(messages.settingsLanguageButton, { kind: 'show-language' }),
+    ],
     [callbackButton(messages.settingsTimeZoneButton, { kind: 'show-time-zone' })],
     [callbackButton(messages.settingsCloseButton, { kind: 'close' })],
   ];
@@ -29,6 +40,22 @@ export function settingsOverviewKeyboard(
   return {
     inline_keyboard: rows,
   };
+}
+
+/** Builds the focused fallback menu for one Mini App feature. */
+export function settingsFeatureKeyboard(
+  messages: MessageCatalog,
+  feature: SettingsFeature,
+  configured: boolean,
+): InlineKeyboardMarkup {
+  const rows: InlineKeyboardMarkup['inline_keyboard'] = [
+    [callbackButton(messages.settingsFeatureEditButton, { kind: 'edit-feature', feature })],
+  ];
+  if (configured) {
+    rows.push([callbackButton(messages.settingsFeatureDisableButton, { kind: 'disable-feature', feature })]);
+  }
+  rows.push([callbackButton(messages.settingsBackButton, { kind: 'back' })]);
+  return { inline_keyboard: rows };
 }
 
 /** Builds the locale picker with a return action and no client-supplied values. */

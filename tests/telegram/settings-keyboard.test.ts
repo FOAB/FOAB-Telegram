@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getMessages } from '../../src/i18n/messages.js';
 import {
   privateGroupSelectionKeyboard,
+  settingsFeatureKeyboard,
   settingsOverviewKeyboard,
 } from '../../src/telegram/settings-keyboard.js';
 
@@ -12,6 +13,36 @@ describe('settings interaction keyboards', () => {
 
     expect(buttons.every((button) => 'callback_data' in button)).toBe(true);
     expect(buttons.some((button) => 'web_app' in button)).toBe(false);
+  });
+
+  it('exposes the same direct feature categories as the Mini App fallback', () => {
+    const messages = getMessages('pt-BR');
+    const keyboard = settingsOverviewKeyboard(messages);
+    const buttons = keyboard.inline_keyboard.flat();
+
+    expect(buttons.map((button) => button.text)).toEqual(expect.arrayContaining([
+      messages.settingsWelcomeButton,
+      messages.settingsRulesButton,
+      messages.settingsGoodbyeButton,
+    ]));
+    expect(buttons.map((button) => 'callback_data' in button ? button.callback_data : '')).toEqual(
+      expect.arrayContaining([
+        'foab:settings:feature:welcome',
+        'foab:settings:feature:rules',
+        'foab:settings:feature:goodbye',
+      ]),
+    );
+  });
+
+  it('offers edit, disable, and back actions for a configured feature', () => {
+    const keyboard = settingsFeatureKeyboard(getMessages('en-US'), 'welcome', true);
+    const buttons = keyboard.inline_keyboard.flat();
+
+    expect(buttons.map((button) => 'callback_data' in button ? button.callback_data : '')).toEqual([
+      'foab:settings:edit-feature:welcome',
+      'foab:settings:disable-feature:welcome',
+      'foab:settings:back',
+    ]);
   });
 
   it('places the Mini App first while retaining callback fallback actions', () => {

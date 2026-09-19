@@ -58,9 +58,22 @@ describe('settings command contract', () => {
       kind: 'set-time-zone',
       value: 'America/Sao_Paulo',
     });
+    expect(parseSettingsCallbackData('foab:settings:feature:welcome')).toEqual({
+      kind: 'show-feature',
+      feature: 'welcome',
+    });
+    expect(parseSettingsCallbackData('foab:settings:edit-feature:rules')).toEqual({
+      kind: 'edit-feature',
+      feature: 'rules',
+    });
+    expect(parseSettingsCallbackData('foab:settings:disable-feature:goodbye')).toEqual({
+      kind: 'disable-feature',
+      feature: 'goodbye',
+    });
     expect(parseSettingsCallbackData('foab:settings:locale:fr-FR')).toBeNull();
     expect(parseSettingsCallbackData('foab:settings:group:0')).toBeNull();
     expect(parseSettingsCallbackData('other:settings:language')).toBeNull();
+    expect(parseSettingsCallbackData('foab:settings:feature:unknown')).toBeNull();
   });
 
   it('keeps settings visible to private chats and group administrators only', () => {

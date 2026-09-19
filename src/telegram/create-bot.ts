@@ -1,9 +1,11 @@
 import { Bot, type Context } from 'grammy';
 import type { Chat, InlineKeyboardMarkup, Message } from 'grammy/types';
-import type {
-  GroupRecord,
-  GroupRepository,
-  GroupSettingsUpdate,
+import {
+  GROUP_MESSAGE_MAX_LENGTH,
+  GROUP_RULES_MAX_LENGTH,
+  type GroupRecord,
+  type GroupRepository,
+  type GroupSettingsUpdate,
 } from '../db/group-repository.js';
 import type { UpdateInboxRepository } from '../db/update-inbox-repository.js';
 import type { BotGroupStatus } from '../db/schema.js';
@@ -22,6 +24,7 @@ import {
   parseSettingsCallbackData,
   type SettingsCallback,
   type SettingsCommand,
+  type SettingsFeature,
 } from './commands.js';
 import { ActiveFlowStore, type FlowKey } from './flow-state.js';
 import {
@@ -31,6 +34,7 @@ import {
 import { normalizeTelegramUpdate } from './update-normalizer.js';
 import {
   privateGroupSelectionKeyboard,
+  settingsFeatureKeyboard,
   settingsLanguageKeyboard,
   settingsOverviewKeyboard,
   settingsTimeZoneKeyboard,
@@ -267,6 +271,79 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     );
   });
 
+  bot.on('message:text', async (context) => {
+    const text = context.message.text;
+    if (text.startsWith('/')) {
+      return;
+    }
+
+    const sender = context.from;
+    if (!sender) {
+      return;
+    }
+
+    const group = await observeCurrentGroup(context, dependencies);
+    if (group) {
+      const key = getFlowKey(context, dependencies.installationId, group.telegramChatId);
+      const feature = key ? activeFeatureFlow(flows, key) : null;
+      if (!key || !feature) {
+        return;
+      }
+      await handleFeatureText(
+        context,
+        dependencies,
+        flows,
+        key,
+        group,
+        feature,
+        text,
+        await isCurrentGroupAdministrator(context),
+      );
+      return;
+    }
+
+    if (context.chat?.type !== 'private') {
+      return;
+    }
+
+    const selectionKey = getPrivateSelectionKey(context, dependencies.installationId);
+    const selectedGroupId = selectionKey
+      ? privateSelections.resolveSelected(selectionKey)
+      : null;
+    if (!selectionKey || selectedGroupId === null) {
+      return;
+    }
+
+    const groupKey = getPrivateFlowKey(context, dependencies.installationId, selectedGroupId);
+    if (!groupKey) {
+      return;
+    }
+    const feature = activeFeatureFlow(flows, groupKey);
+    if (!feature) {
+      return;
+    }
+    const selectedGroup = await dependencies.groups.findByChatId(
+      dependencies.installationId,
+      selectedGroupId,
+    );
+    if (!selectedGroup) {
+      flows.cancel(groupKey, feature);
+      await replyToCommand(context, getMessages(localeFromTelegram(sender.language_code)).settingsNotAuthorized);
+      return;
+    }
+
+    await handleFeatureText(
+      context,
+      dependencies,
+      flows,
+      groupKey,
+      selectedGroup,
+      feature,
+      text,
+      await isGroupAdministrator(context.api, selectedGroupId, sender.id),
+    );
+  });
+
   bot.on('callback_query:data', async (context) => {
     const action = parseSettingsCallbackData(context.callbackQuery.data);
     if (!action) {
@@ -417,10 +494,19 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
       : localeFromTelegram(context.from?.language_code);
     const messages = getMessages(locale);
     if (!group && context.chat?.type === 'private') {
-      const key = getPrivateSelectionKey(context, dependencies.installationId);
+      const selectionKey = getPrivateSelectionKey(context, dependencies.installationId);
+      const selectedGroupId = selectionKey
+        ? privateSelections.resolveSelected(selectionKey)
+        : null;
+      const groupFlowKey = selectedGroupId === null
+        ? null
+        : getPrivateFlowKey(context, dependencies.installationId, selectedGroupId);
+      const flowCancelled = groupFlowKey === null
+        ? false
+        : cancelSettingsFlows(flows, groupFlowKey);
       await replyToCommand(
         context,
-        key && privateSelections.clear(key)
+        (flowCancelled || (selectionKey !== null && privateSelections.clear(selectionKey)))
           ? messages.cancelCompleted
           : messages.cancelNoActiveFlow,
       );
@@ -429,7 +515,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     const key = getFlowKey(context, dependencies.installationId, group?.telegramChatId);
     await replyToCommand(
       context,
-      key && flows.cancel(key, 'settings')
+      key && cancelSettingsFlows(flows, key)
         ? messages.cancelCompleted
         : messages.cancelNoActiveFlow,
     );
@@ -704,6 +790,7 @@ async function handleSettingsCallback(
     return handlePrivateSettingsCallback(
       context,
       dependencies,
+      flows,
       privateSelections,
       action,
     );
@@ -747,17 +834,61 @@ async function handleGroupSettingsCallback(
   }
 
   if (action.kind === 'close') {
-    flows.cancel(key, 'settings');
+    cancelSettingsFlows(flows, key);
     await editSettingsMessage(context, messages.cancelCompleted);
     return null;
   }
   if (action.kind === 'back') {
+    cancelFeatureFlows(flows, key);
     await editSettingsMessage(
       context,
       messages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
       settingsOverviewKeyboard(messages, dependencies.webAppUrl),
     );
     return null;
+  }
+  if (action.kind === 'show-feature') {
+    cancelFeatureFlows(flows, key);
+    const configured = featureValue(group, action.feature) !== null;
+    await editSettingsMessage(
+      context,
+      messages.settingsFeatureStatus(action.feature, configured),
+      settingsFeatureKeyboard(messages, action.feature, configured),
+    );
+    return null;
+  }
+  if (action.kind === 'edit-feature') {
+    flows.begin(key, action.feature);
+    await editSettingsMessage(
+      context,
+      messages.settingsFeaturePrompt(action.feature),
+      settingsFeatureKeyboard(messages, action.feature, featureValue(group, action.feature) !== null),
+    );
+    return null;
+  }
+  if (action.kind === 'disable-feature') {
+    const updated = await dependencies.groups.updateSettings(
+      dependencies.installationId,
+      group.telegramChatId,
+      group.settingsRevision,
+      featureUpdate(action.feature, null),
+    );
+    if (!updated) {
+      await editSettingsMessage(
+        context,
+        messages.settingsConflict,
+        settingsOverviewKeyboard(messages, dependencies.webAppUrl),
+      );
+      return messages.settingsConflict;
+    }
+    cancelSettingsFlows(flows, key);
+    const updatedMessages = getMessages(supportedLocale(updated.locale));
+    await editSettingsMessage(
+      context,
+      updatedMessages.settingsFeatureStatus(action.feature, false),
+      settingsFeatureKeyboard(updatedMessages, action.feature, false),
+    );
+    return updatedMessages.settingsFeatureUpdated(action.feature, false);
   }
   if (action.kind === 'show-language') {
     await editSettingsMessage(context, messages.settingsLanguagePrompt, settingsLanguageKeyboard(messages));
@@ -799,6 +930,7 @@ async function handleGroupSettingsCallback(
 async function handlePrivateSettingsCallback(
   context: Context,
   dependencies: BotDependencies,
+  flows: ActiveFlowStore,
   selections: PrivateGroupSelectionStore,
   action: SettingsCallback,
 ): Promise<string | null> {
@@ -853,18 +985,68 @@ async function handlePrivateSettingsCallback(
   }
 
   const groupMessages = getMessages(supportedLocale(group.locale));
+  const groupKey = getPrivateFlowKey(context, dependencies.installationId, selectedGroupId);
+  if (!groupKey) {
+    await editSettingsMessage(context, groupMessages.settingsNotAuthorized);
+    return groupMessages.settingsNotAuthorized;
+  }
   if (action.kind === 'close') {
+    cancelSettingsFlows(flows, groupKey);
     selections.clear(key);
     await editSettingsMessage(context, groupMessages.cancelCompleted);
     return null;
   }
   if (action.kind === 'back') {
+    cancelFeatureFlows(flows, groupKey);
     await editSettingsMessage(
       context,
       groupMessages.groupSettings(group.locale, group.timeZone, group.settingsRevision),
       settingsOverviewKeyboard(groupMessages, dependencies.webAppUrl),
     );
     return null;
+  }
+  if (action.kind === 'show-feature') {
+    cancelFeatureFlows(flows, groupKey);
+    const configured = featureValue(group, action.feature) !== null;
+    await editSettingsMessage(
+      context,
+      groupMessages.settingsFeatureStatus(action.feature, configured),
+      settingsFeatureKeyboard(groupMessages, action.feature, configured),
+    );
+    return null;
+  }
+  if (action.kind === 'edit-feature') {
+    flows.begin(groupKey, action.feature);
+    await editSettingsMessage(
+      context,
+      groupMessages.settingsFeaturePrompt(action.feature),
+      settingsFeatureKeyboard(groupMessages, action.feature, featureValue(group, action.feature) !== null),
+    );
+    return null;
+  }
+  if (action.kind === 'disable-feature') {
+    const updated = await dependencies.groups.updateSettings(
+      dependencies.installationId,
+      selectedGroupId,
+      group.settingsRevision,
+      featureUpdate(action.feature, null),
+    );
+    if (!updated) {
+      await editSettingsMessage(
+        context,
+        groupMessages.settingsConflict,
+        settingsOverviewKeyboard(groupMessages, dependencies.webAppUrl),
+      );
+      return groupMessages.settingsConflict;
+    }
+    cancelSettingsFlows(flows, groupKey);
+    const updatedMessages = getMessages(supportedLocale(updated.locale));
+    await editSettingsMessage(
+      context,
+      updatedMessages.settingsFeatureStatus(action.feature, false),
+      settingsFeatureKeyboard(updatedMessages, action.feature, false),
+    );
+    return updatedMessages.settingsFeatureUpdated(action.feature, false);
   }
   if (action.kind === 'show-language') {
     await editSettingsMessage(
@@ -959,6 +1141,24 @@ function getPrivateSelectionKey(
   };
 }
 
+/** Creates a private editing identity tied to the selected group and user. */
+function getPrivateFlowKey(
+  context: Context,
+  installationId: string,
+  groupChatId: bigint,
+): FlowKey | null {
+  const chat = context.chat;
+  const sender = context.from;
+  if (!chat || chat.type !== 'private' || !sender || sender.is_bot) {
+    return null;
+  }
+  return {
+    installationId,
+    telegramChatId: groupChatId,
+    userId: sender.id,
+  };
+}
+
 /** Keeps an observed Telegram title on one plain line before private display. */
 function safeGroupTitle(title: string): string {
   return title.replace(/\s+/gu, ' ').trim().slice(0, 255);
@@ -984,6 +1184,96 @@ function getFlowKey(
     telegramChatId: groupChatId,
     userId: sender.id,
   };
+}
+
+/** Returns the currently active feature flow for one exact user and group. */
+function activeFeatureFlow(flows: ActiveFlowStore, key: FlowKey): SettingsFeature | null {
+  const features: readonly SettingsFeature[] = ['welcome', 'rules', 'goodbye'];
+  return features.find((feature) => flows.has(key, feature)) ?? null;
+}
+
+/** Cancels only feature-editing flows for one exact user and group. */
+function cancelFeatureFlows(flows: ActiveFlowStore, key: FlowKey): boolean {
+  let cancelled = false;
+  for (const feature of ['welcome', 'rules', 'goodbye'] as const) {
+    cancelled = flows.cancel(key, feature) || cancelled;
+  }
+  return cancelled;
+}
+
+/** Cancels the settings menu and all feature-editing flows for one scope. */
+function cancelSettingsFlows(flows: ActiveFlowStore, key: FlowKey): boolean {
+  return flows.cancel(key, 'settings') || cancelFeatureFlows(flows, key);
+}
+
+/** Reads one feature value from the server-owned group record. */
+function featureValue(group: GroupRecord, feature: SettingsFeature): string | null {
+  switch (feature) {
+    case 'welcome':
+      return group.welcomeMessage;
+    case 'rules':
+      return group.rulesText;
+    case 'goodbye':
+      return group.goodbyeMessage;
+  }
+}
+
+/** Converts one feature action into the allowlisted repository update. */
+function featureUpdate(feature: SettingsFeature, value: string | null): GroupSettingsUpdate {
+  switch (feature) {
+    case 'welcome':
+      return { welcomeMessage: value };
+    case 'rules':
+      return { rulesText: value };
+    case 'goodbye':
+      return { goodbyeMessage: value };
+  }
+}
+
+/** Persists one fallback feature message after rechecking exact group authority. */
+async function handleFeatureText(
+  context: Context,
+  dependencies: BotDependencies,
+  flows: ActiveFlowStore,
+  key: FlowKey,
+  group: GroupRecord,
+  feature: SettingsFeature,
+  text: string,
+  administrator: boolean,
+): Promise<void> {
+  const messages = getMessages(supportedLocale(group.locale));
+  if (!group.isActive || !administrator) {
+    flows.cancel(key, feature);
+    await replyToCommand(context, messages.settingsNotAuthorized);
+    return;
+  }
+
+  const maximumLength = feature === 'rules' ? GROUP_RULES_MAX_LENGTH : GROUP_MESSAGE_MAX_LENGTH;
+  if (text.length > maximumLength) {
+    await replyToCommand(context, messages.settingsFeatureTooLong);
+    return;
+  }
+
+  const value = text.trim().length === 0 ? null : text;
+  const updated = await dependencies.groups.updateSettings(
+    dependencies.installationId,
+    group.telegramChatId,
+    group.settingsRevision,
+    featureUpdate(feature, value),
+  );
+  if (!updated) {
+    flows.cancel(key, feature);
+    await replyToCommand(context, messages.settingsConflict);
+    return;
+  }
+
+  flows.cancel(key, feature);
+  const updatedMessages = getMessages(supportedLocale(updated.locale));
+  await replyToCommand(
+    context,
+    updatedMessages.settingsFeatureUpdated(feature, value !== null),
+    settingsOverviewKeyboard(updatedMessages, dependencies.webAppUrl),
+  );
 }
 
 /** Converts the parser's closed union into the repository's allowlisted patch. */

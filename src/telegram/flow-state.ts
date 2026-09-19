@@ -6,7 +6,7 @@ export interface FlowKey {
 }
 
 /** The currently supported transient flow names. */
-export type FlowName = 'settings';
+export type FlowName = 'settings' | 'welcome' | 'rules' | 'goodbye';
 
 /**
  * Stores only active-flow markers in memory. No message content or credentials
