@@ -1,0 +1,2 @@
+ALTER TABLE "telegram_groups" ADD COLUMN "welcome_enabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "telegram_groups" ADD COLUMN "goodbye_enabled" boolean DEFAULT true NOT NULL;

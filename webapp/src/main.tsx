@@ -26,6 +26,7 @@ import {
   IconDoorExit,
   IconFileText,
   IconListCheck,
+  IconLayoutGrid,
   IconMessage,
   IconSearch,
   IconSettings,
@@ -37,7 +38,7 @@ import './styles.css';
 
 const TIME_ZONE_OPTIONS = ['UTC', 'America/Sao_Paulo', 'America/New_York', 'Europe/Lisbon'] as const;
 type SettingsSection = 'home' | 'general' | 'welcome' | 'goodbye' | 'rules';
-type MessageFeatureDraft = Pick<GroupSettingsUpdate, 'welcomeMessage' | 'goodbyeMessage' | 'welcomeMode' | 'goodbyeMode' | 'deletePreviousWelcomeMessage' | 'deletePreviousGoodbyeMessage'>;
+type MessageFeatureDraft = Pick<GroupSettingsUpdate, 'welcomeMessage' | 'welcomeEnabled' | 'goodbyeMessage' | 'goodbyeEnabled' | 'welcomeMode' | 'goodbyeMode' | 'deletePreviousWelcomeMessage' | 'deletePreviousGoodbyeMessage'>;
 
 /** Root application for the private FOAB administration Mini App. */
 function App(): ReactElement {
@@ -359,6 +360,7 @@ function BotSettingsView({
   readonly onSaved: (locale: UiLocale) => void;
 }): ReactElement {
   const [selectedLocale, setSelectedLocale] = useState<UiLocale>(locale);
+  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -366,16 +368,17 @@ function BotSettingsView({
     setSelectedLocale(locale);
   }, [locale]);
 
-  const save = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const chooseLocale = async (value: UiLocale) => {
     setSaving(true);
     setFeedback(null);
     try {
-      const updatedLocale = selectedLocale === locale
+      const updatedLocale = value === locale
         ? locale
-        : await api.updatePrivateLocale(selectedLocale);
+        : await api.updatePrivateLocale(value);
+      setSelectedLocale(updatedLocale);
       onSaved(updatedLocale);
-      setFeedback(messages.saved);
+      setLanguagePickerOpen(false);
+      setFeedback(getUiMessages(updatedLocale).saved);
     } catch (saveError: unknown) {
       setFeedback(errorMessage(saveError, null, locale, messages));
     } finally {
@@ -385,36 +388,34 @@ function BotSettingsView({
 
   return (
     <section className="content-section" aria-labelledby="bot-settings-title">
-      <button className="text-button back-button" type="button" onClick={onBack}>
+      <button className="text-button back-button" type="button" onClick={languagePickerOpen ? () => setLanguagePickerOpen(false) : onBack}>
         <IconArrowLeft aria-hidden="true" size={18} stroke={2} />
-        {messages.back}
+        {languagePickerOpen ? messages.backToSettings : messages.back}
       </button>
-      <div className="settings-heading">
-        <div className="group-icon large" aria-hidden="true">
-          <IconSettings size={24} stroke={1.8} />
-        </div>
-        <div>
-          <h2 id="bot-settings-title">{messages.botSettingsTitle}</h2>
-          <p>{messages.botSettingsDescription}</p>
-        </div>
+      <div className="settings-hero">
+        <IconLayoutGrid aria-hidden="true" size={46} stroke={1.7} />
+        <h2 id="bot-settings-title">{messages.botSettingsTitle}</h2>
+        <p>{messages.botSettingsDescription}</p>
       </div>
-      <div className="settings-list-group">
+      <div className={`settings-list-group ${languagePickerOpen ? 'settings-choice-page' : ''}`}>
         <div className="list-section-heading">
-          <h3>{messages.privateSettingsSectionTitle}</h3>
+          <h3>{languagePickerOpen ? messages.privateLanguageLabel : messages.privateSettingsSectionTitle}</h3>
         </div>
-        <form className="settings-form" onSubmit={save}>
+        {languagePickerOpen ? (
           <ChoiceList
             label={messages.privateLanguageLabel}
             options={(['en-US', 'pt-BR', 'es-ES'] as const).map((value) => ({ value, label: messages.localeNames[value] }))}
             selected={selectedLocale}
-            onChange={setSelectedLocale}
+            onChange={(value) => { void chooseLocale(value); }}
           />
-          <p className="field-help">{messages.privateLanguageHelp}</p>
-          {feedback && <p className="form-feedback" role="status">{feedback}</p>}
-          <Button className="foab-save-button" mode="filled" size="l" stretched type="submit" loading={saving} disabled={saving}>
-            {saving ? messages.saving : messages.save}
-          </Button>
-        </form>
+        ) : (
+          <div className="settings-list">
+            <SettingsSelectionRow label={messages.privateLanguageLabel} value={messages.localeNames[selectedLocale]} onClick={() => setLanguagePickerOpen(true)} />
+          </div>
+        )}
+        <p className="field-help">{messages.privateLanguageHelp}</p>
+        {saving && <p className="field-help" role="status">{messages.saving}</p>}
+        {feedback && <p className="form-feedback" role="status">{feedback}</p>}
       </div>
     </section>
   );
@@ -440,6 +441,7 @@ function SettingsView({
 }): ReactElement {
   const [locale, setLocale] = useState<UiLocale>(group.locale);
   const [timeZone, setTimeZone] = useState(group.timeZone);
+  const [settingPicker, setSettingPicker] = useState<'language' | 'timeZone' | null>(null);
   const [welcomeMessage, setWelcomeMessage] = useState(group.welcomeMessage ?? '');
   const [welcomeMode, setWelcomeMode] = useState<MessageDeliveryMode>(group.welcomeMode);
   const [deletePreviousWelcomeMessage, setDeletePreviousWelcomeMessage] = useState(group.deletePreviousWelcomeMessage);
@@ -467,9 +469,11 @@ function SettingsView({
     setFeedback(null);
     try {
       const nextWelcomeMessage = optionalText('welcomeMessage' in draft ? draft.welcomeMessage ?? '' : welcomeMessage);
+      const nextWelcomeEnabled = draft.welcomeEnabled ?? (draft.welcomeMessage !== undefined ? nextWelcomeMessage !== null : group.welcomeEnabled);
       const nextWelcomeMode = draft.welcomeMode ?? welcomeMode;
       const nextDeletePreviousWelcomeMessage = draft.deletePreviousWelcomeMessage ?? deletePreviousWelcomeMessage;
       const nextGoodbyeMessage = optionalText('goodbyeMessage' in draft ? draft.goodbyeMessage ?? '' : goodbyeMessage);
+      const nextGoodbyeEnabled = draft.goodbyeEnabled ?? (draft.goodbyeMessage !== undefined ? nextGoodbyeMessage !== null : group.goodbyeEnabled);
       const nextGoodbyeMode = draft.goodbyeMode ?? goodbyeMode;
       const nextDeletePreviousGoodbyeMessage = draft.deletePreviousGoodbyeMessage ?? deletePreviousGoodbyeMessage;
       const nextRulesText = optionalText(rulesText);
@@ -477,9 +481,11 @@ function SettingsView({
         ...(locale === group.locale ? {} : { locale }),
         ...(timeZone === group.timeZone ? {} : { timeZone }),
         ...(nextWelcomeMessage === group.welcomeMessage ? {} : { welcomeMessage: nextWelcomeMessage }),
+        ...(nextWelcomeEnabled === group.welcomeEnabled ? {} : { welcomeEnabled: nextWelcomeEnabled }),
         ...(nextWelcomeMode === group.welcomeMode ? {} : { welcomeMode: nextWelcomeMode }),
         ...(nextDeletePreviousWelcomeMessage === group.deletePreviousWelcomeMessage ? {} : { deletePreviousWelcomeMessage: nextDeletePreviousWelcomeMessage }),
         ...(nextGoodbyeMessage === group.goodbyeMessage ? {} : { goodbyeMessage: nextGoodbyeMessage }),
+        ...(nextGoodbyeEnabled === group.goodbyeEnabled ? {} : { goodbyeEnabled: nextGoodbyeEnabled }),
         ...(nextGoodbyeMode === group.goodbyeMode ? {} : { goodbyeMode: nextGoodbyeMode }),
         ...(nextDeletePreviousGoodbyeMessage === group.deletePreviousGoodbyeMessage ? {} : { deletePreviousGoodbyeMessage: nextDeletePreviousGoodbyeMessage }),
         ...(nextRulesText === group.rulesText ? {} : { rulesText: nextRulesText }),
@@ -522,6 +528,7 @@ function SettingsView({
         group={group}
         messages={messages}
         message={isWelcome ? welcomeMessage : goodbyeMessage}
+        enabled={isWelcome ? group.welcomeEnabled : group.goodbyeEnabled}
         mode={isWelcome ? welcomeMode : goodbyeMode}
         deletePrevious={isWelcome ? deletePreviousWelcomeMessage : deletePreviousGoodbyeMessage}
         onMessageChange={isWelcome ? setWelcomeMessage : setGoodbyeMessage}
@@ -532,6 +539,24 @@ function SettingsView({
         saving={saving}
         feedback={feedback}
       />
+    );
+  }
+
+  if (section === 'general' && settingPicker) {
+    const isLanguage = settingPicker === 'language';
+    const label = isLanguage ? messages.language : messages.timeZone;
+    return (
+      <section className="content-section settings-choice-page" aria-labelledby="settings-choice-title">
+        <button className="text-button back-button" type="button" onClick={() => setSettingPicker(null)}>
+          <IconArrowLeft aria-hidden="true" size={18} stroke={2} />{messages.backToSettings}
+        </button>
+        <h2 id="settings-choice-title">{label}</h2>
+        {isLanguage ? (
+          <ChoiceList label={label} options={(['en-US', 'pt-BR', 'es-ES'] as const).map((value) => ({ value, label: messages.localeNames[value] }))} selected={locale} onChange={(value) => { setLocale(value); setSettingPicker(null); }} />
+        ) : (
+          <ChoiceList label={label} options={[...new Set([timeZone, ...TIME_ZONE_OPTIONS])].map((value) => ({ value, label: value }))} selected={timeZone} onChange={(value) => { setTimeZone(value); setSettingPicker(null); }} />
+        )}
+      </section>
     );
   }
 
@@ -548,21 +573,13 @@ function SettingsView({
           <p>{group.title}</p>
         </div>
       </div>
-      <form className="settings-form" onSubmit={save}>
+      <form className={`settings-form ${section === 'general' ? 'settings-form-flat' : ''}`} onSubmit={save}>
         {section === 'general' && (
           <>
-            <ChoiceList
-              label={messages.language}
-              options={(['en-US', 'pt-BR', 'es-ES'] as const).map((value) => ({ value, label: messages.localeNames[value] }))}
-              selected={locale}
-              onChange={setLocale}
-            />
-            <ChoiceList
-              label={messages.timeZone}
-              options={[...new Set([timeZone, ...TIME_ZONE_OPTIONS])].map((value) => ({ value, label: value }))}
-              selected={timeZone}
-              onChange={setTimeZone}
-            />
+            <div className="settings-list">
+              <SettingsSelectionRow label={messages.language} value={messages.localeNames[locale]} onClick={() => setSettingPicker('language')} />
+              <SettingsSelectionRow label={messages.timeZone} value={timeZone} onClick={() => setSettingPicker('timeZone')} />
+            </div>
             <p className="field-help">{messages.timezoneHelp}</p>
           </>
         )}
@@ -586,6 +603,20 @@ function SettingsView({
         </Button>
       </form>
     </section>
+  );
+}
+
+/** Compact selected-value row matching Telegram's settings navigation. */
+function SettingsSelectionRow({ label, value, onClick }: {
+  readonly label: string;
+  readonly value: string;
+  readonly onClick: () => void;
+}): ReactElement {
+  return (
+    <Cell className="settings-selection-row" Component="button" type="button" onClick={onClick}
+      after={<span className="settings-selection-value">{value}<IconChevronRight aria-hidden="true" size={18} stroke={1.8} /></span>}>
+      {label}
+    </Cell>
   );
 }
 
@@ -625,9 +656,9 @@ function SettingsHomeView({
           <h3>{messages.messagesSectionTitle}</h3>
         </div>
         <nav className="settings-list" aria-label={messages.messagesSectionTitle}>
-          <SettingsListRow icon={<IconMessage aria-hidden="true" size={22} stroke={1.7} />} title={messages.welcomeMessage} summary={messages.welcomeDescription} meta={<StatusChip configured={optionalText(group.welcomeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('welcome')} />
+          <SettingsListRow icon={<IconMessage aria-hidden="true" size={22} stroke={1.7} />} title={messages.welcomeMessage} summary={messages.welcomeDescription} meta={<StatusChip configured={group.welcomeEnabled && optionalText(group.welcomeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('welcome')} />
           <SettingsListRow icon={<IconFileText aria-hidden="true" size={22} stroke={1.7} />} title={messages.rulesTitle} summary={messages.rulesCategoryHelp} onClick={() => onOpen('rules')} />
-          <SettingsListRow icon={<IconDoorExit aria-hidden="true" size={22} stroke={1.7} />} title={messages.goodbyeMessage} summary={messages.goodbyeDescription} meta={<StatusChip configured={optionalText(group.goodbyeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('goodbye')} />
+          <SettingsListRow icon={<IconDoorExit aria-hidden="true" size={22} stroke={1.7} />} title={messages.goodbyeMessage} summary={messages.goodbyeDescription} meta={<StatusChip configured={group.goodbyeEnabled && optionalText(group.goodbyeMessage ?? '') !== null} messages={messages} />} onClick={() => onOpen('goodbye')} />
         </nav>
       </div>
     </section>
@@ -733,6 +764,7 @@ function MessageFeatureView({
   group,
   messages,
   message,
+  enabled,
   mode,
   deletePrevious,
   onMessageChange,
@@ -747,6 +779,7 @@ function MessageFeatureView({
   readonly group: GroupSettings;
   readonly messages: ReturnType<typeof getUiMessages>;
   readonly message: string;
+  readonly enabled: boolean;
   readonly mode: MessageDeliveryMode;
   readonly deletePrevious: boolean;
   readonly onMessageChange: (value: string) => void;
@@ -761,9 +794,10 @@ function MessageFeatureView({
   const isWelcome = kind === 'welcome';
   const title = isWelcome ? messages.welcomeMessage : messages.goodbyeMessage;
   const description = isWelcome ? messages.welcomeDescription : messages.goodbyeDescription;
-  const configured = optionalText(message) !== null;
+  const configured = enabled && optionalText(message) !== null;
 
   const messageField = isWelcome ? 'welcomeMessage' : 'goodbyeMessage';
+  const enabledField = isWelcome ? 'welcomeEnabled' : 'goodbyeEnabled';
   const modeField = isWelcome ? 'welcomeMode' : 'goodbyeMode';
   const deleteField = isWelcome ? 'deletePreviousWelcomeMessage' : 'deletePreviousGoodbyeMessage';
   const saveFeatureDraft = (draft: MessageFeatureDraft): void => {
@@ -785,38 +819,22 @@ function MessageFeatureView({
           <p>{group.title}</p>
         </div>
       </div>
-      <div className="feature-summary">
-        <p>{description}</p>
-        <div className="feature-detail-row">
-          <strong>{messages.status}</strong>
-          <span className={`status-chip ${configured ? 'status-chip-active' : 'status-chip-inactive'}`}>
-            {configured ? messages.enabled : messages.disabled}
-          </span>
-        </div>
-        <div className="feature-detail-row feature-mode-row">
-          <strong>{messages.mode}</strong>
-          <span>{mode === 'always' ? messages.messageModeAlways : messages.messageModeFirstEntry}</span>
-        </div>
-        <div className="feature-detail-row">
-          <strong>{messages.deletePreviousMessage}</strong>
-          <span>{deletePrevious ? messages.deletePreviousOn : messages.deletePreviousOff}</span>
-        </div>
-      </div>
-      <div className="feature-actions">
-        <button
-          className="secondary-button"
-          type="button"
-          disabled={!configured}
-          onClick={() => {
-            onMessageChange('');
-            saveFeatureDraft({ [messageField]: null });
-          }}
-        >
-          {messages.disable}
-        </button>
-        <button className="primary-button" type="button" onClick={() => setEditorOpen(true)}>
-          {configured ? messages.customizeMessage : messages.enable}
-        </button>
+      <p className="feature-description">{description}</p>
+      <div className="settings-list feature-settings-list">
+        <Cell className="feature-switch-row" Component="label"
+          subtitle={configured ? messages.enabled : messages.disabled}
+          after={<Switch checked={configured} disabled={saving} onChange={(event) => {
+            if (event.target.checked && optionalText(message) === null) {
+              setEditorOpen(true);
+            } else {
+              saveFeatureDraft({ [enabledField]: event.target.checked });
+            }
+          }} />}
+        >{title}</Cell>
+        <Cell className="feature-edit-row" Component="button" type="button" onClick={() => setEditorOpen(true)}
+          after={<IconChevronRight aria-hidden="true" size={18} stroke={1.8} />}>
+          {messages.customizeMessage}
+        </Cell>
       </div>
       <div className="feature-options" aria-label={messages.mode}>
         <p className="feature-options-title">{messages.mode}</p>

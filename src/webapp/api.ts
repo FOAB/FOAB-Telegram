@@ -93,9 +93,11 @@ export interface WebAppGroupResponse {
   readonly timeZone: string;
   readonly settingsRevision: number;
   readonly welcomeMessage: string | null;
+  readonly welcomeEnabled: boolean;
   readonly welcomeMode: MessageDeliveryMode;
   readonly deletePreviousWelcomeMessage: boolean;
   readonly goodbyeMessage: string | null;
+  readonly goodbyeEnabled: boolean;
   readonly goodbyeMode: MessageDeliveryMode;
   readonly deletePreviousGoodbyeMessage: boolean;
   readonly rulesText: string | null;
@@ -385,9 +387,11 @@ function toGroupResponse(group: GroupRecord): WebAppGroupResponse {
     timeZone: group.timeZone,
     settingsRevision: group.settingsRevision,
     welcomeMessage: group.welcomeMessage,
+    welcomeEnabled: group.welcomeEnabled,
     welcomeMode: group.welcomeMode,
     deletePreviousWelcomeMessage: group.deletePreviousWelcomeMessage,
     goodbyeMessage: group.goodbyeMessage,
+    goodbyeEnabled: group.goodbyeEnabled,
     goodbyeMode: group.goodbyeMode,
     deletePreviousGoodbyeMessage: group.deletePreviousGoodbyeMessage,
     rulesText: group.rulesText,
@@ -476,9 +480,11 @@ function parseSettingsPatch(value: unknown): {
     'locale',
     'timeZone',
     'welcomeMessage',
+    'welcomeEnabled',
     'welcomeMode',
     'deletePreviousWelcomeMessage',
     'goodbyeMessage',
+    'goodbyeEnabled',
     'goodbyeMode',
     'deletePreviousGoodbyeMessage',
     'rulesText',
@@ -501,9 +507,11 @@ function parseSettingsPatch(value: unknown): {
     locale?: string;
     timeZone?: string;
     welcomeMessage?: string | null;
+    welcomeEnabled?: boolean;
     welcomeMode?: MessageDeliveryMode;
     deletePreviousWelcomeMessage?: boolean;
     goodbyeMessage?: string | null;
+    goodbyeEnabled?: boolean;
     goodbyeMode?: MessageDeliveryMode;
     deletePreviousGoodbyeMessage?: boolean;
     rulesText?: string | null;
@@ -534,6 +542,10 @@ function parseSettingsPatch(value: unknown): {
     }
     update.welcomeMode = welcomeMode;
   }
+  if (hasOwn(value, 'welcomeEnabled')) {
+    if (typeof value['welcomeEnabled'] !== 'boolean') return null;
+    update.welcomeEnabled = value['welcomeEnabled'];
+  }
   if (hasOwn(value, 'deletePreviousWelcomeMessage')) {
     const deletePreviousWelcomeMessage = value['deletePreviousWelcomeMessage'];
     if (typeof deletePreviousWelcomeMessage !== 'boolean') {
@@ -547,6 +559,10 @@ function parseSettingsPatch(value: unknown): {
       return null;
     }
     update.goodbyeMode = goodbyeMode;
+  }
+  if (hasOwn(value, 'goodbyeEnabled')) {
+    if (typeof value['goodbyeEnabled'] !== 'boolean') return null;
+    update.goodbyeEnabled = value['goodbyeEnabled'];
   }
   if (hasOwn(value, 'deletePreviousGoodbyeMessage')) {
     const deletePreviousGoodbyeMessage = value['deletePreviousGoodbyeMessage'];

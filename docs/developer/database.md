@@ -45,3 +45,5 @@ Generated migration SQL and Drizzle's journal are source-controlled. Review them
 - Use synthetic installation and chat IDs in automated tests. Never point the integration suite at a production database or Telegram group.
 
 The integration suite proves local PostgreSQL constraints, concurrent installation initialization, installation/chat scoping, stale-update handling, optimistic settings writes, and concurrent inbox claims. It does not prove Bot API delivery, live Telegram permissions, transactional outbox delivery, moderation, backups, or production migration recovery.
+
+Migration `0007` adds `welcome_enabled` and `goodbye_enabled` with a true default, preserving delivery for existing configured messages. A false value pauses delivery while keeping the saved text. The migrator applies this additive change before the bot starts; a failed migration stops startup without deleting group data.

@@ -43,3 +43,11 @@ The following surfaces were checked against the existing Telegram-like tokens an
 final result: blocked
 
 Blocker: the authenticated group menu and its category navigation require launch from Telegram, so the rendered category state still needs a real Mini App session check after deployment or local Telegram launch.
+
+## Follow-up: compact settings and activation switches
+
+The BotFather Mini Apps screenshot and the user's FOAB language and activation screenshots were compared with a 390 × 844 synthetic browser preview. Private settings now have a centered icon/title and a compact language row with a separate choice screen. Group language and time zone use the same selected-value pattern. Welcome and goodbye use activation switches; pausing delivery retains saved text.
+
+The synthetic browser rendered the group list, private settings, language picker, group settings, and welcome screen without horizontal overflow or clipped primary controls. Keyboard radio selection, private locale saving, and switch activation were exercised against a mock API. No P0/P1/P2 visual issue remained in these checked states.
+
+Final result: passed for the synthetic browser comparison. The live Telegram WebView and deployed API behavior remain unverified, as in the original QA gate above.

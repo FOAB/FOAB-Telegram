@@ -171,6 +171,7 @@ describe('installation and group persistence boundaries', () => {
         locale: 'pt-BR',
         timeZone: 'America/Sao_Paulo',
         welcomeMessage: 'Welcome, synthetic members!',
+        goodbyeMessage: 'Goodbye, synthetic members!',
         welcomeMode: 'first',
         deletePreviousWelcomeMessage: true,
         rulesText: 'Synthetic rules only.',
@@ -191,6 +192,12 @@ describe('installation and group persistence boundaries', () => {
     expect(updated?.rulesText).toBe('Synthetic rules only.');
     expect(updated?.settingsRevision).toBe(initial.settingsRevision + 1);
     expect(stale).toBeNull();
+
+    const paused = await groups.updateSettings(installationA, chatId, updated?.settingsRevision ?? -1, { welcomeEnabled: false, goodbyeEnabled: false });
+    expect(paused?.welcomeEnabled).toBe(false);
+    expect(paused?.welcomeMessage).toBe('Welcome, synthetic members!');
+    expect(paused?.goodbyeEnabled).toBe(false);
+    expect(paused?.goodbyeMessage).toBe('Goodbye, synthetic members!');
   });
 
   it('does not update a group from another installation', async () => {

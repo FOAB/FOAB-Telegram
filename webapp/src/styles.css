@@ -321,6 +321,31 @@ button:disabled {
   gap: 14px;
 }
 
+.settings-hero {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 18px 16px 28px;
+  text-align: center;
+}
+
+.settings-hero svg {
+  margin-bottom: 14px;
+  color: var(--foab-accent-color);
+}
+
+.settings-hero h2,
+.settings-hero p {
+  margin: 0;
+}
+
+.settings-hero p {
+  max-width: 290px;
+  color: var(--foab-muted-color);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .settings-home-subtitle {
   max-width: 520px;
   margin: -6px 0 0;
@@ -599,6 +624,50 @@ button:disabled {
   background: var(--foab-card-color);
 }
 
+.settings-form-flat {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.settings-selection-row,
+.feature-edit-row {
+  min-height: 52px;
+  border: 0;
+  background: var(--foab-card-color);
+  color: var(--foab-text-color);
+  text-align: left;
+}
+
+.settings-selection-row:not(:last-child),
+.feature-settings-list > :not(:last-child) {
+  border-bottom: 1px solid color-mix(in srgb, var(--foab-muted-color) 14%, transparent);
+}
+
+.settings-selection-row:hover,
+.settings-selection-row:focus-visible,
+.feature-edit-row:hover,
+.feature-edit-row:focus-visible {
+  background: color-mix(in srgb, var(--foab-accent-color) 8%, var(--foab-card-color));
+}
+
+.settings-selection-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 190px;
+  color: var(--foab-muted-color);
+  white-space: nowrap;
+}
+
+.settings-selection-value svg {
+  flex: 0 0 auto;
+}
+
+.settings-choice-page .choice-field-label {
+  display: none;
+}
+
 .choice-field {
   display: grid;
   gap: 9px;
@@ -609,6 +678,8 @@ button:disabled {
 }
 
 .choice-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--foab-muted-color) 22%, transparent);
   border-radius: 12px;
@@ -618,10 +689,15 @@ button:disabled {
 .choice-row {
   width: 100%;
   min-height: 48px;
+  border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--foab-muted-color) 14%, transparent);
   background: var(--foab-secondary-bg-color);
   color: var(--foab-text-color);
   text-align: left;
+}
+
+.choice-row [class*="tgui-"] {
+  min-width: 0;
 }
 
 .choice-row:last-child {
@@ -652,11 +728,16 @@ button:disabled {
 }
 
 .feature-switch-row {
-  min-height: 56px;
-  border: 1px solid color-mix(in srgb, var(--foab-muted-color) 18%, transparent);
+  min-height: 62px;
   border-radius: 12px;
   background: var(--foab-card-color);
   color: var(--foab-text-color);
+}
+
+.feature-description {
+  margin: 0;
+  color: var(--foab-muted-color);
+  line-height: 1.5;
 }
 
 .settings-form label {

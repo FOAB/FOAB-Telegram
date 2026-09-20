@@ -85,9 +85,11 @@ describe('Mini App settings API', () => {
         timeZone: 'UTC',
         settingsRevision: 0,
         welcomeMessage: null,
+        welcomeEnabled: true,
         welcomeMode: 'always',
         deletePreviousWelcomeMessage: false,
         goodbyeMessage: null,
+        goodbyeEnabled: true,
         goodbyeMode: 'always',
         deletePreviousGoodbyeMessage: false,
         rulesText: null,
@@ -253,6 +255,44 @@ describe('Mini App settings API', () => {
     expect(unknownField.statusCode).toBe(400);
   });
 
+  it('pauses a saved greeting without erasing it and rejects invalid or cross-group toggles', async () => {
+    const session = await createSession(app);
+    const configured = await patch(app, session, primaryChatId, {
+      expectedRevision: 0,
+      welcomeMessage: 'Synthetic greeting',
+      goodbyeMessage: 'Synthetic farewell',
+    });
+    const paused = await patch(app, session, primaryChatId, {
+      expectedRevision: 1,
+      welcomeEnabled: false,
+      goodbyeEnabled: false,
+    });
+    const denied = await patch(app, session, secondaryChatId, {
+      expectedRevision: 0,
+      welcomeEnabled: false,
+    });
+    const invalid = await patch(app, session, primaryChatId, {
+      expectedRevision: 2,
+      welcomeEnabled: 'false',
+    });
+    const resumed = await patch(app, session, primaryChatId, {
+      expectedRevision: 2,
+      welcomeEnabled: true,
+      goodbyeEnabled: true,
+    });
+
+    expect(configured.statusCode).toBe(200);
+    expect(paused.statusCode).toBe(200);
+    expect(JSON.parse(paused.body) as unknown).toMatchObject({
+      group: { welcomeEnabled: false, welcomeMessage: 'Synthetic greeting', goodbyeEnabled: false, goodbyeMessage: 'Synthetic farewell' },
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(invalid.statusCode).toBe(400);
+    expect(JSON.parse(resumed.body) as unknown).toMatchObject({
+      group: { welcomeEnabled: true, welcomeMessage: 'Synthetic greeting', goodbyeEnabled: true, goodbyeMessage: 'Synthetic farewell' },
+    });
+  });
+
   it('revokes the browser session and does not disclose session internals', async () => {
     const session = await createSession(app);
     const logout = await app.inject({
@@ -367,11 +407,13 @@ function createGroup(
     updatedAt: timestamp,
     username: null,
     welcomeMessage: null,
+    welcomeEnabled: true,
     welcomeMode: 'always',
     deletePreviousWelcomeMessage: false,
     welcomeSentOnce: false,
     welcomeLastMessageId: null,
     goodbyeMessage: null,
+    goodbyeEnabled: true,
     goodbyeMode: 'always',
     deletePreviousGoodbyeMessage: false,
     goodbyeSentOnce: false,
@@ -408,9 +450,11 @@ class SyntheticGroupStore implements WebAppGroupStore {
       ...(update.locale === undefined ? {} : { locale: update.locale }),
       ...(update.timeZone === undefined ? {} : { timeZone: update.timeZone }),
       ...(update.welcomeMessage === undefined ? {} : { welcomeMessage: update.welcomeMessage }),
+      ...(update.welcomeEnabled === undefined ? {} : { welcomeEnabled: update.welcomeEnabled }),
       ...(update.welcomeMode === undefined ? {} : { welcomeMode: update.welcomeMode }),
       ...(update.deletePreviousWelcomeMessage === undefined ? {} : { deletePreviousWelcomeMessage: update.deletePreviousWelcomeMessage }),
       ...(update.goodbyeMessage === undefined ? {} : { goodbyeMessage: update.goodbyeMessage }),
+      ...(update.goodbyeEnabled === undefined ? {} : { goodbyeEnabled: update.goodbyeEnabled }),
       ...(update.goodbyeMode === undefined ? {} : { goodbyeMode: update.goodbyeMode }),
       ...(update.deletePreviousGoodbyeMessage === undefined ? {} : { deletePreviousGoodbyeMessage: update.deletePreviousGoodbyeMessage }),
       ...(update.rulesText === undefined ? {} : { rulesText: update.rulesText }),

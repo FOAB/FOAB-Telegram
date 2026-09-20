@@ -26,9 +26,11 @@ export interface GroupSettings {
   readonly timeZone: string;
   readonly settingsRevision: number;
   readonly welcomeMessage: string | null;
+  readonly welcomeEnabled: boolean;
   readonly welcomeMode: MessageDeliveryMode;
   readonly deletePreviousWelcomeMessage: boolean;
   readonly goodbyeMessage: string | null;
+  readonly goodbyeEnabled: boolean;
   readonly goodbyeMode: MessageDeliveryMode;
   readonly deletePreviousGoodbyeMessage: boolean;
   readonly rulesText: string | null;
@@ -39,9 +41,11 @@ export interface GroupSettingsUpdate {
   readonly locale?: UiLocale;
   readonly timeZone?: string;
   readonly welcomeMessage?: string | null;
+  readonly welcomeEnabled?: boolean;
   readonly welcomeMode?: MessageDeliveryMode;
   readonly deletePreviousWelcomeMessage?: boolean;
   readonly goodbyeMessage?: string | null;
+  readonly goodbyeEnabled?: boolean;
   readonly goodbyeMode?: MessageDeliveryMode;
   readonly deletePreviousGoodbyeMessage?: boolean;
   readonly rulesText?: string | null;
@@ -213,9 +217,11 @@ function parseGroup(value: unknown): GroupSettings | null {
   const timeZone = value['timeZone'];
   const settingsRevision = value['settingsRevision'];
   const welcomeMessage = value['welcomeMessage'];
+  const welcomeEnabled = value['welcomeEnabled'];
   const welcomeMode = value['welcomeMode'];
   const deletePreviousWelcomeMessage = value['deletePreviousWelcomeMessage'];
   const goodbyeMessage = value['goodbyeMessage'];
+  const goodbyeEnabled = value['goodbyeEnabled'];
   const goodbyeMode = value['goodbyeMode'];
   const deletePreviousGoodbyeMessage = value['deletePreviousGoodbyeMessage'];
   const rulesText = value['rulesText'];
@@ -232,9 +238,11 @@ function parseGroup(value: unknown): GroupSettings | null {
     !isUiLocale(locale) ||
     typeof timeZone !== 'string' ||
     !isNullableConfigurationText(welcomeMessage) ||
+    typeof welcomeEnabled !== 'boolean' ||
     (welcomeMode !== 'always' && welcomeMode !== 'first') ||
     typeof deletePreviousWelcomeMessage !== 'boolean' ||
     !isNullableConfigurationText(goodbyeMessage) ||
+    typeof goodbyeEnabled !== 'boolean' ||
     (goodbyeMode !== 'always' && goodbyeMode !== 'first') ||
     typeof deletePreviousGoodbyeMessage !== 'boolean' ||
     !isNullableConfigurationText(rulesText) ||
@@ -248,6 +256,7 @@ function parseGroup(value: unknown): GroupSettings | null {
     chatId,
     chatType,
     goodbyeMessage,
+    goodbyeEnabled,
     goodbyeMode,
     deletePreviousGoodbyeMessage,
     locale,
@@ -257,6 +266,7 @@ function parseGroup(value: unknown): GroupSettings | null {
     title,
     username,
     welcomeMessage,
+    welcomeEnabled,
     welcomeMode,
     deletePreviousWelcomeMessage,
   };

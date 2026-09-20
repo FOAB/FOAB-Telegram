@@ -32,9 +32,11 @@ export interface GroupSettingsUpdate {
   readonly locale?: string;
   readonly timeZone?: string;
   readonly welcomeMessage?: string | null;
+  readonly welcomeEnabled?: boolean;
   readonly welcomeMode?: MessageDeliveryMode;
   readonly deletePreviousWelcomeMessage?: boolean;
   readonly goodbyeMessage?: string | null;
+  readonly goodbyeEnabled?: boolean;
   readonly goodbyeMode?: MessageDeliveryMode;
   readonly deletePreviousGoodbyeMessage?: boolean;
   readonly rulesText?: string | null;
@@ -51,11 +53,13 @@ export interface GroupRecord {
   readonly timeZone: string;
   readonly settingsRevision: number;
   readonly welcomeMessage: string | null;
+  readonly welcomeEnabled: boolean;
   readonly welcomeMode: MessageDeliveryMode;
   readonly deletePreviousWelcomeMessage: boolean;
   readonly welcomeSentOnce: boolean;
   readonly welcomeLastMessageId: number | null;
   readonly goodbyeMessage: string | null;
+  readonly goodbyeEnabled: boolean;
   readonly goodbyeMode: MessageDeliveryMode;
   readonly deletePreviousGoodbyeMessage: boolean;
   readonly goodbyeSentOnce: boolean;
@@ -220,9 +224,11 @@ export class GroupRepository {
       update.locale === undefined &&
       update.timeZone === undefined &&
       update.welcomeMessage === undefined &&
+      update.welcomeEnabled === undefined &&
       update.welcomeMode === undefined &&
       update.deletePreviousWelcomeMessage === undefined &&
       update.goodbyeMessage === undefined &&
+      update.goodbyeEnabled === undefined &&
       update.goodbyeMode === undefined &&
       update.deletePreviousGoodbyeMessage === undefined &&
       update.rulesText === undefined
@@ -242,10 +248,12 @@ export class GroupRepository {
       throw new RangeError('Goodbye delivery mode is not supported.');
     }
     if (
+      (update.welcomeEnabled !== undefined && typeof update.welcomeEnabled !== 'boolean') ||
+      (update.goodbyeEnabled !== undefined && typeof update.goodbyeEnabled !== 'boolean') ||
       (update.deletePreviousWelcomeMessage !== undefined && typeof update.deletePreviousWelcomeMessage !== 'boolean') ||
       (update.deletePreviousGoodbyeMessage !== undefined && typeof update.deletePreviousGoodbyeMessage !== 'boolean')
     ) {
-      throw new RangeError('Previous-message deletion settings must be boolean.');
+      throw new RangeError('Message feature settings must be boolean.');
     }
     validateOptionalGroupMessage(update.welcomeMessage, GROUP_MESSAGE_MAX_LENGTH, 'Welcome message');
     validateOptionalGroupMessage(update.goodbyeMessage, GROUP_MESSAGE_MAX_LENGTH, 'Goodbye message');
@@ -257,15 +265,17 @@ export class GroupRepository {
         ...(update.locale === undefined ? {} : { locale: update.locale }),
         ...(update.timeZone === undefined ? {} : { timeZone: update.timeZone }),
         ...(update.welcomeMessage === undefined ? {} : { welcomeMessage: update.welcomeMessage }),
+        ...(update.welcomeEnabled === undefined ? {} : { welcomeEnabled: update.welcomeEnabled }),
         ...(update.welcomeMode === undefined ? {} : { welcomeMode: update.welcomeMode }),
         ...(update.deletePreviousWelcomeMessage === undefined ? {} : { deletePreviousWelcomeMessage: update.deletePreviousWelcomeMessage }),
-        ...((update.welcomeMessage !== undefined || update.welcomeMode !== undefined)
+        ...((update.welcomeMessage !== undefined || update.welcomeMode !== undefined || update.welcomeEnabled !== undefined)
           ? { welcomeSentOnce: false }
           : {}),
         ...(update.goodbyeMessage === undefined ? {} : { goodbyeMessage: update.goodbyeMessage }),
+        ...(update.goodbyeEnabled === undefined ? {} : { goodbyeEnabled: update.goodbyeEnabled }),
         ...(update.goodbyeMode === undefined ? {} : { goodbyeMode: update.goodbyeMode }),
         ...(update.deletePreviousGoodbyeMessage === undefined ? {} : { deletePreviousGoodbyeMessage: update.deletePreviousGoodbyeMessage }),
-        ...((update.goodbyeMessage !== undefined || update.goodbyeMode !== undefined)
+        ...((update.goodbyeMessage !== undefined || update.goodbyeMode !== undefined || update.goodbyeEnabled !== undefined)
           ? { goodbyeSentOnce: false }
           : {}),
         ...(update.rulesText === undefined ? {} : { rulesText: update.rulesText }),

@@ -194,6 +194,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     const group = await observeCurrentGroup(context, dependencies);
     if (
       !group?.isActive ||
+      !group.welcomeEnabled ||
       group.welcomeMessage === null ||
       (group.welcomeMode === 'first' && group.welcomeSentOnce)
     ) {
@@ -222,6 +223,7 @@ export function createBot(token: string, dependencies: BotDependencies): Bot<Con
     const group = await observeCurrentGroup(context, dependencies);
     if (
       !group?.isActive ||
+      !group.goodbyeEnabled ||
       group.goodbyeMessage === null ||
       (group.goodbyeMode === 'first' && group.goodbyeSentOnce) ||
       context.message.left_chat_member.is_bot
@@ -913,7 +915,7 @@ async function handleGroupSettingsCallback(
   }
   if (action.kind === 'show-feature') {
     cancelFeatureFlows(flows, key);
-    const configured = featureValue(group, action.feature) !== null;
+    const configured = featureEnabled(group, action.feature);
     await editSettingsMessage(
       context,
       messages.settingsFeatureStatus(action.feature, configured, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
@@ -922,6 +924,10 @@ async function handleGroupSettingsCallback(
     return null;
   }
   if (action.kind === 'enable-feature') {
+    if (featureValue(group, action.feature) !== null && action.feature !== 'rules') {
+      return await updateFeatureFromCallback(context, dependencies, flows, key, group, action.feature,
+        featureEnabledUpdate(action.feature, true));
+    }
     flows.begin(key, action.feature);
     await editSettingsMessage(
       context,
@@ -935,7 +941,7 @@ async function handleGroupSettingsCallback(
     await editSettingsMessage(
       context,
       messages.settingsFeaturePrompt(action.feature),
-      settingsFeatureKeyboard(messages, action.feature, featureValue(group, action.feature) !== null, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
+      settingsFeatureKeyboard(messages, action.feature, featureEnabled(group, action.feature), featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
     );
     return null;
   }
@@ -944,7 +950,7 @@ async function handleGroupSettingsCallback(
       dependencies.installationId,
       group.telegramChatId,
       group.settingsRevision,
-      featureUpdate(action.feature, null),
+      action.feature === 'rules' ? featureUpdate('rules', null) : featureEnabledUpdate(action.feature, false),
     );
     if (!updated) {
       await editSettingsMessage(
@@ -1114,7 +1120,7 @@ async function handlePrivateSettingsCallback(
   }
   if (action.kind === 'show-feature') {
     cancelFeatureFlows(flows, groupKey);
-    const configured = featureValue(group, action.feature) !== null;
+    const configured = featureEnabled(group, action.feature);
     await editSettingsMessage(
       context,
       groupMessages.settingsFeatureStatus(action.feature, configured, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
@@ -1123,6 +1129,10 @@ async function handlePrivateSettingsCallback(
     return null;
   }
   if (action.kind === 'enable-feature') {
+    if (featureValue(group, action.feature) !== null && action.feature !== 'rules') {
+      return await updateFeatureFromCallback(context, dependencies, flows, groupKey, group, action.feature,
+        featureEnabledUpdate(action.feature, true));
+    }
     flows.begin(groupKey, action.feature);
     await editSettingsMessage(
       context,
@@ -1136,7 +1146,7 @@ async function handlePrivateSettingsCallback(
     await editSettingsMessage(
       context,
       groupMessages.settingsFeaturePrompt(action.feature),
-      settingsFeatureKeyboard(groupMessages, action.feature, featureValue(group, action.feature) !== null, featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
+      settingsFeatureKeyboard(groupMessages, action.feature, featureEnabled(group, action.feature), featureMode(group, action.feature), featureDeletePrevious(group, action.feature)),
     );
     return null;
   }
@@ -1145,7 +1155,7 @@ async function handlePrivateSettingsCallback(
       dependencies.installationId,
       selectedGroupId,
       group.settingsRevision,
-      featureUpdate(action.feature, null),
+      action.feature === 'rules' ? featureUpdate('rules', null) : featureEnabledUpdate(action.feature, false),
     );
     if (!updated) {
       await editSettingsMessage(
@@ -1368,6 +1378,19 @@ function featureValue(group: GroupRecord, feature: SettingsFeature): string | nu
   }
 }
 
+/** Distinguishes a saved message from the current delivery state. */
+function featureEnabled(group: GroupRecord, feature: SettingsFeature): boolean {
+  return feature === 'rules'
+    ? group.rulesText !== null
+    : feature === 'welcome'
+      ? group.welcomeEnabled && group.welcomeMessage !== null
+      : group.goodbyeEnabled && group.goodbyeMessage !== null;
+}
+
+function featureEnabledUpdate(feature: 'welcome' | 'goodbye', enabled: boolean): GroupSettingsUpdate {
+  return feature === 'welcome' ? { welcomeEnabled: enabled } : { goodbyeEnabled: enabled };
+}
+
 /** Reads the delivery mode for an automated message feature. */
 function featureMode(group: GroupRecord, feature: SettingsFeature): MessageDeliveryMode {
   return feature === 'welcome' ? group.welcomeMode : feature === 'goodbye' ? group.goodbyeMode : 'always';
@@ -1382,11 +1405,11 @@ function featureDeletePrevious(group: GroupRecord, feature: SettingsFeature): bo
 function featureUpdate(feature: SettingsFeature, value: string | null): GroupSettingsUpdate {
   switch (feature) {
     case 'welcome':
-      return { welcomeMessage: value };
+      return { welcomeMessage: value, welcomeEnabled: value !== null };
     case 'rules':
       return { rulesText: value };
     case 'goodbye':
-      return { goodbyeMessage: value };
+      return { goodbyeMessage: value, goodbyeEnabled: value !== null };
   }
 }
 
@@ -1433,14 +1456,14 @@ async function handleFeatureText(
     context,
     updatedMessages.settingsFeatureStatus(
       feature,
-      value !== null,
+      featureEnabled(updated, feature),
       featureMode(updated, feature),
       featureDeletePrevious(updated, feature),
     ),
     settingsFeatureKeyboard(
       updatedMessages,
       feature,
-      value !== null,
+      featureEnabled(updated, feature),
       featureMode(updated, feature),
       featureDeletePrevious(updated, feature),
     ),
@@ -1478,7 +1501,7 @@ async function updateFeatureFromCallback(
 
   cancelFeatureFlows(flows, key);
   const updatedMessages = getMessages(supportedLocale(updated.locale));
-  const configured = featureValue(updated, feature) !== null;
+  const configured = featureEnabled(updated, feature);
   await editSettingsMessage(
     context,
     updatedMessages.settingsFeatureStatus(feature, configured, featureMode(updated, feature), featureDeletePrevious(updated, feature)),
