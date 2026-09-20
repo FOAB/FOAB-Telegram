@@ -198,7 +198,15 @@ export function createWebAppServer(
         dependencies.installationId,
         session,
       );
-      return reply.send(toSessionIdentity(session, privateLocale));
+      const csrfToken = sessions.renewCsrf(session);
+      reply.setCookie(CSRF_COOKIE_NAME, csrfToken, {
+        httpOnly: false,
+        maxAge: 60 * 60,
+        path: '/',
+        sameSite: 'strict',
+        secure: true,
+      });
+      return reply.send({ ...toSessionIdentity(session, privateLocale), csrfToken });
     } catch {
       return sendApiError(reply, 503, 'session_unavailable');
     }

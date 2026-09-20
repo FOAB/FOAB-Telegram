@@ -41,4 +41,20 @@ describe('Web App session store', () => {
     expect(store.get(second.sessionToken, sessionStart)).not.toBeNull();
     expect(store.size(sessionStart)).toBe(1);
   });
+
+  it('renews the CSRF token for a restored session and invalidates the old value', () => {
+    const store = new WebAppSessionStore();
+    const created = store.create(syntheticUser, sessionStart);
+    const restored = store.get(created.sessionToken, sessionStart);
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+
+    const renewedToken = store.renewCsrf(restored);
+    const refreshed = store.get(created.sessionToken, sessionStart);
+    expect(refreshed).not.toBeNull();
+    if (!refreshed) return;
+    expect(renewedToken).not.toBe(created.csrfToken);
+    expect(store.validateCsrf(refreshed, renewedToken)).toBe(true);
+    expect(store.validateCsrf(refreshed, created.csrfToken)).toBe(false);
+  });
 });

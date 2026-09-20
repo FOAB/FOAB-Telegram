@@ -51,3 +51,9 @@ The BotFather Mini Apps screenshot and the user's FOAB language and activation s
 The synthetic browser rendered the group list, private settings, language picker, group settings, and welcome screen without horizontal overflow or clipped primary controls. Keyboard radio selection, private locale saving, and switch activation were exercised against a mock API. No P0/P1/P2 visual issue remained in these checked states.
 
 Final result: passed for the synthetic browser comparison. The live Telegram WebView and deployed API behavior remain unverified, as in the original QA gate above.
+
+## Follow-up: native Telegram UI sections and session recovery
+
+The welcome screen was rendered at 390 × 844 in a synthetic browser preview and compared with the user's BotFather-style grouped settings references. Status, delivery mode, and cleanup now render as separate Telegram UI `Section` groups with `Cell` rows, white text, rounded backgrounds, radio selection, and native switches. A browser-default gray background on mode buttons was found during visual QA and corrected before completion. Both activation and previous-message cleanup switches were clicked; the preview showed the updated checked state and save feedback without clipping or horizontal overflow.
+
+The preview used fictional group and session data. It did not verify Telegram WebView cookies, the deployed Dokploy service, or cross-replica session behavior. Those remain live runtime checks.

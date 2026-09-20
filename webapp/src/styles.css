@@ -728,10 +728,38 @@ button:disabled {
 }
 
 .feature-switch-row {
-  min-height: 62px;
+  min-height: 56px;
+}
+
+.feature-hero {
+  padding: 12px 12px 4px;
+}
+
+.feature-section {
+  margin: 0;
+}
+
+.feature-section > div:first-child {
+  overflow: hidden;
   border-radius: 12px;
+}
+
+.feature-choice-row {
+  min-height: 52px;
+  width: 100%;
+  border: 0;
   background: var(--foab-card-color);
   color: var(--foab-text-color);
+  text-align: left;
+}
+
+.feature-choice-row:hover,
+.feature-choice-row:focus-visible {
+  background: color-mix(in srgb, var(--foab-accent-color) 8%, var(--foab-card-color));
+}
+
+.feature-choice-row[aria-pressed="true"] svg {
+  color: var(--foab-accent-color);
 }
 
 .feature-description {

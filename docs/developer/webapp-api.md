@@ -38,7 +38,7 @@ The raw Telegram `initData`, session token, and CSRF token are never logged or s
 
 ### `GET /api/session`
 
-Requires the `foab_session` cookie. It returns the authenticated user and expiration time. The CSRF value is intentionally omitted from this response; the browser can read its same-origin `foab_csrf` cookie.
+Requires the `foab_session` cookie. It returns the authenticated user, expiration time, and a newly issued CSRF value, and refreshes the same-origin `foab_csrf` cookie. The old CSRF value is invalidated. This lets the Mini App recover when the readable cookie was lost but the HttpOnly session cookie is still valid. A write rejected with `csrf_denied` refreshes this value once and retries; a write rejected with `unauthorized` exchanges still-fresh signed Telegram `initData` for a new session once. If that init data is too old, the user must reopen the Mini App from Telegram.
 
 ### `DELETE /api/session`
 

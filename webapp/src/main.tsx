@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AppRoot, Button, Cell, Switch } from '@telegram-apps/telegram-ui';
+import { AppRoot, Button, Cell, Section, Switch } from '@telegram-apps/telegram-ui';
 import '@telegram-apps/telegram-ui/dist/styles.css';
 import {
   WebAppApiClient,
@@ -43,7 +43,7 @@ type MessageFeatureDraft = Pick<GroupSettingsUpdate, 'welcomeMessage' | 'welcome
 /** Root application for the private FOAB administration Mini App. */
 function App(): ReactElement {
   const webApp = useMemo(() => initializeTelegramWebApp(), []);
-  const api = useMemo(() => new WebAppApiClient(), []);
+  const api = useMemo(() => new WebAppApiClient(() => webApp?.initData ?? ''), [webApp]);
   const [session, setSession] = useState<SessionState | null>(null);
   const [groups, setGroups] = useState<readonly GroupSettings[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -200,24 +200,16 @@ function PageShell({
   return (
     <AppRoot className="foab-ui-root" appearance={webApp?.colorScheme ?? 'dark'}>
       <main className="app-shell">
-      <header className="app-header">
-        <div className="app-mark" aria-hidden="true">F</div>
-        <div className="app-header-copy">
-          <h1>{messages.appTitle}</h1>
-          <p>{messages.appSubtitle}</p>
-        </div>
-        {webApp?.close && (
-          <button
-            aria-label={messages.close}
-            className="close-button"
-            type="button"
-            onClick={() => webApp.close?.()}
-          >
-            <IconX aria-hidden="true" size={22} stroke={1.8} />
-          </button>
+        {!webApp && (
+          <header className="app-header">
+            <div className="app-mark" aria-hidden="true">F</div>
+            <div className="app-header-copy">
+              <h1>{messages.appTitle}</h1>
+              <p>{messages.appSubtitle}</p>
+            </div>
+          </header>
         )}
-      </header>
-      {children}
+        {children}
       </main>
     </AppRoot>
   );
@@ -810,17 +802,12 @@ function MessageFeatureView({
         <IconArrowLeft aria-hidden="true" size={18} stroke={2} />
         {messages.backToSettings}
       </button>
-      <div className="settings-heading">
-        <div className="group-icon large" aria-hidden="true">
-          <IconMessage size={24} stroke={1.8} />
-        </div>
-        <div>
-          <h2 id="message-feature-title">{title}</h2>
-          <p>{group.title}</p>
-        </div>
+      <div className="settings-hero feature-hero">
+        <IconMessage aria-hidden="true" size={46} stroke={1.7} />
+        <h2 id="message-feature-title">{title}</h2>
+        <p>{group.title}</p>
       </div>
-      <p className="feature-description">{description}</p>
-      <div className="settings-list feature-settings-list">
+      <Section className="feature-section" header={messages.status} footer={description}>
         <Cell className="feature-switch-row" Component="label"
           subtitle={configured ? messages.enabled : messages.disabled}
           after={<Switch checked={configured} disabled={saving} onChange={(event) => {
@@ -830,36 +817,26 @@ function MessageFeatureView({
               saveFeatureDraft({ [enabledField]: event.target.checked });
             }
           }} />}
-        >{title}</Cell>
+        >{messages.sendMessage}</Cell>
         <Cell className="feature-edit-row" Component="button" type="button" onClick={() => setEditorOpen(true)}
           after={<IconChevronRight aria-hidden="true" size={18} stroke={1.8} />}>
           {messages.customizeMessage}
         </Cell>
-      </div>
-      <div className="feature-options" aria-label={messages.mode}>
-        <p className="feature-options-title">{messages.mode}</p>
-        <div className="feature-option-grid">
-          <button
-            className={`feature-option ${mode === 'always' ? 'feature-option-active' : ''}`}
-            type="button"
+      </Section>
+      <Section className="feature-section" header={messages.mode} footer={messages.modeHelp}>
+        {(['always', 'first'] as const).map((option) => (
+          <Cell key={option} Component="button" type="button" className="feature-choice-row"
+            aria-pressed={mode === option} disabled={saving}
+            after={mode === option ? <IconCheck aria-hidden="true" size={20} stroke={2.2} /> : null}
             onClick={() => {
-              onModeChange('always');
-              saveFeatureDraft({ [modeField]: 'always' });
-            }}
-          >
-            {messages.messageModeAlways}
-          </button>
-          <button
-            className={`feature-option ${mode === 'first' ? 'feature-option-active' : ''}`}
-            type="button"
-            onClick={() => {
-              onModeChange('first');
-              saveFeatureDraft({ [modeField]: 'first' });
-            }}
-          >
-            {messages.messageModeFirstEntry}
-          </button>
-        </div>
+              onModeChange(option);
+              saveFeatureDraft({ [modeField]: option });
+            }}>
+            {option === 'always' ? messages.messageModeAlways : messages.messageModeFirstEntry}
+          </Cell>
+        ))}
+      </Section>
+      <Section className="feature-section" header={messages.cleanup} footer={messages.deletePreviousHelp}>
         <Cell
           className="feature-switch-row"
           Component="label"
@@ -877,7 +854,7 @@ function MessageFeatureView({
         >
           {messages.deletePreviousMessage}
         </Cell>
-      </div>
+      </Section>
       {editorOpen && (
         <form
           className="settings-form feature-editor"

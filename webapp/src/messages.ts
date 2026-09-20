@@ -51,6 +51,10 @@ export interface UiMessages {
   readonly enabled: string;
   readonly disabled: string;
   readonly mode: string;
+  readonly modeHelp: string;
+  readonly sendMessage: string;
+  readonly cleanup: string;
+  readonly deletePreviousHelp: string;
   readonly messageModeAlways: string;
   readonly messageModeFirstEntry: string;
   readonly deletePreviousMessage: string;
@@ -121,6 +125,10 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     enabled: 'Enabled',
     disabled: 'Disabled',
     mode: 'Mode',
+    modeHelp: 'Choose whether FOAB sends this message on every event or only once per member.',
+    sendMessage: 'Send message',
+    cleanup: 'Cleanup',
+    deletePreviousHelp: 'Remove only the previous automated message sent by FOAB.',
     messageModeAlways: 'Always send',
     messageModeFirstEntry: 'Send first entry',
     deletePreviousMessage: 'Delete previous message',
@@ -189,6 +197,10 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     enabled: 'Ativado',
     disabled: 'Desativado',
     mode: 'Modo',
+    modeHelp: 'Escolha se o FOAB envia sempre ou apenas uma vez por membro.',
+    sendMessage: 'Enviar mensagem',
+    cleanup: 'Limpeza',
+    deletePreviousHelp: 'Remove somente a mensagem automática anterior enviada pelo FOAB.',
     messageModeAlways: 'Sempre enviar',
     messageModeFirstEntry: 'Enviar 1ª entrada',
     deletePreviousMessage: 'Deletar mensagem anterior',
@@ -257,6 +269,10 @@ const catalogs: Readonly<Record<UiLocale, UiMessages>> = {
     enabled: 'Activado',
     disabled: 'Desactivado',
     mode: 'Modo',
+    modeHelp: 'Elige si FOAB envía este mensaje siempre o solo una vez por miembro.',
+    sendMessage: 'Enviar mensaje',
+    cleanup: 'Limpieza',
+    deletePreviousHelp: 'Elimina solo el mensaje automático anterior enviado por FOAB.',
     messageModeAlways: 'Enviar siempre',
     messageModeFirstEntry: 'Enviar primera entrada',
     deletePreviousMessage: 'Eliminar mensaje anterior',

@@ -95,6 +95,16 @@ export class WebAppSessionStore {
     return timingSafeEqual(suppliedHash, session.csrfTokenHash);
   }
 
+  /** Reissues a CSRF value for an already authenticated, live session. */
+  public renewCsrf(session: WebAppSession): string {
+    const csrfToken = randomBytes(TOKEN_BYTES).toString('base64url');
+    this.sessions.set(session.sessionTokenHash, {
+      ...session,
+      csrfTokenHash: hashTokenBytes(csrfToken),
+    });
+    return csrfToken;
+  }
+
   /** Revokes one session by its opaque cookie value. */
   public revoke(sessionToken: string): void {
     const sessionHash = safeTokenHash(sessionToken);

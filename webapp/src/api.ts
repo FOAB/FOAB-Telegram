@@ -68,6 +68,8 @@ export class WebAppApiError extends Error {
 export class WebAppApiClient {
   private csrfToken: string | null = null;
 
+  public constructor(private readonly getInitData: () => string = () => '') {}
+
   /** Exchanges the exact Telegram bridge value for a server-side session. */
   public async createSession(initData: string): Promise<SessionState> {
     const result = await this.request('/api/session', {
@@ -84,7 +86,7 @@ export class WebAppApiClient {
   public async getSession(): Promise<SessionState> {
     const result = await this.request('/api/session', { method: 'GET' });
     const session = parseSession(result);
-    this.csrfToken = readCookie('foab_csrf');
+    this.csrfToken = session.csrfToken ?? readCookie('foab_csrf');
     return session;
   }
 
@@ -110,17 +112,9 @@ export class WebAppApiClient {
     group: GroupSettings,
     update: GroupSettingsUpdate,
   ): Promise<GroupSettings> {
-    const csrfToken = this.csrfToken ?? readCookie('foab_csrf');
-    if (!csrfToken) {
-      throw new WebAppApiError(401, 'unauthorized');
-    }
-    const result = await this.request(`/api/groups/${encodeURIComponent(group.chatId)}/settings`, {
-      body: JSON.stringify({ expectedRevision: group.settingsRevision, ...update }),
-      headers: {
-        'content-type': 'application/json',
-        'x-foab-csrf': csrfToken,
-      },
-      method: 'PATCH',
+    const result = await this.mutate(`/api/groups/${encodeURIComponent(group.chatId)}/settings`, {
+      expectedRevision: group.settingsRevision,
+      ...update,
     });
     if (!isRecord(result)) {
       throw new WebAppApiError(502, 'invalid_response');
@@ -134,22 +128,56 @@ export class WebAppApiClient {
 
   /** Saves the authenticated user's private-chat language preference. */
   public async updatePrivateLocale(locale: UiLocale): Promise<UiLocale> {
-    const csrfToken = this.csrfToken ?? readCookie('foab_csrf');
-    if (!csrfToken) {
-      throw new WebAppApiError(401, 'unauthorized');
-    }
-    const result = await this.request('/api/preferences', {
-      body: JSON.stringify({ locale }),
-      headers: {
-        'content-type': 'application/json',
-        'x-foab-csrf': csrfToken,
-      },
-      method: 'PATCH',
-    });
+    const result = await this.mutate('/api/preferences', { locale });
     if (!isRecord(result) || !isUiLocale(result['privateLocale'])) {
       throw new WebAppApiError(502, 'invalid_response');
     }
     return result['privateLocale'];
+  }
+
+  /** Restores a missing CSRF value or a lost server session once before a write. */
+  private async mutate(path: string, body: Record<string, unknown>): Promise<unknown> {
+    if (!this.csrfToken && !readCookie('foab_csrf')) {
+      await this.restoreSession(false);
+    }
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const csrfToken = this.csrfToken ?? readCookie('foab_csrf');
+      if (!csrfToken) {
+        throw new WebAppApiError(401, 'unauthorized');
+      }
+      try {
+        return await this.request(path, {
+          body: JSON.stringify(body),
+          headers: { 'content-type': 'application/json', 'x-foab-csrf': csrfToken },
+          method: 'PATCH',
+        });
+      } catch (error: unknown) {
+        if (attempt !== 0 || !(error instanceof WebAppApiError) ||
+          (error.code !== 'unauthorized' && error.code !== 'csrf_denied')) {
+          throw error;
+        }
+        await this.restoreSession(error.code === 'unauthorized');
+      }
+    }
+    throw new WebAppApiError(401, 'unauthorized');
+  }
+
+  private async restoreSession(forceLogin: boolean): Promise<void> {
+    if (!forceLogin) {
+      try {
+        await this.getSession();
+        return;
+      } catch (error: unknown) {
+        if (!(error instanceof WebAppApiError) || error.code !== 'unauthorized') {
+          throw error;
+        }
+      }
+    }
+    const initData = this.getInitData();
+    if (!initData) {
+      throw new WebAppApiError(401, 'not_launched_from_telegram');
+    }
+    await this.createSession(initData);
   }
 
   private async request(path: string, init: RequestInit): Promise<unknown> {

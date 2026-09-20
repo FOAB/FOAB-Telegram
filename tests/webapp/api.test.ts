@@ -73,6 +73,7 @@ describe('Mini App settings API', () => {
     expect(JSON.parse(identity.body) as unknown).toEqual({
       user: { id: administratorId, languageCode: 'pt-BR', privateLocale: 'pt-BR' },
       expiresAt: new Date((syntheticNow + 3_600) * 1_000).toISOString(),
+      csrfToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
     });
     expect(groups.statusCode).toBe(200);
     expect(JSON.parse(groups.body) as unknown).toEqual({
@@ -136,6 +137,39 @@ describe('Mini App settings API', () => {
       user: { privateLocale: 'es-ES' },
     });
     expect(missingCsrf.statusCode).toBe(403);
+  });
+
+  it('restores a write-capable session when the browser lost its readable CSRF cookie', async () => {
+    const session = await createSession(app);
+    const foreignOrigin = await app.inject({
+      method: 'GET',
+      url: '/api/session',
+      headers: { cookie: session.cookie, origin: 'https://foreign.example.invalid' },
+    });
+    const restored = await app.inject({
+      method: 'GET',
+      url: '/api/session',
+      headers: { cookie: session.cookie },
+    });
+    const body = JSON.parse(restored.body) as { readonly csrfToken?: unknown };
+    expect(foreignOrigin.statusCode).toBe(403);
+    expect(foreignOrigin.body).not.toContain('csrfToken');
+    expect(restored.statusCode).toBe(200);
+    expect(typeof body.csrfToken).toBe('string');
+    expect(String(restored.headers['set-cookie'])).toContain('foab_csrf=');
+
+    const update = await app.inject({
+      method: 'PATCH',
+      url: '/api/preferences',
+      headers: {
+        'content-type': 'application/json',
+        cookie: session.cookie,
+        origin: syntheticOrigin,
+        'x-foab-csrf': body.csrfToken as string,
+      },
+      payload: JSON.stringify({ locale: 'es-ES' }),
+    });
+    expect(update.statusCode).toBe(200);
   });
 
   it('rejects invalid Telegram init data and browser requests from another origin', async () => {
